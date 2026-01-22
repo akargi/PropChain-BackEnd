@@ -1,0 +1,113 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  walletAddress String?   @unique @map("wallet_address")
+  role          UserRole  @default(USER)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  properties    Property[]
+  receivedTransactions Transaction[] @relation("UserTransactions")
+
+  @@map("users")
+}
+
+model Property {
+  id          String         @id @default(cuid())
+  title       String
+  description String?
+  location    String
+  price       Decimal
+  status      PropertyStatus @default(DRAFT)
+  ownerId     String         @map("owner_id")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+
+  owner       User            @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  transactions Transaction[]
+
+  @@map("properties")
+}
+
+model Transaction {
+  id            String            @id @default(cuid())
+  fromAddress   String            @map("from_address")
+  toAddress     String            @map("to_address")
+  amount        Decimal
+  txHash        String?           @map("tx_hash")
+  status        TransactionStatus  @default(PENDING)
+  type          TransactionType
+  propertyId    String?           @map("property_id")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
+
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  recipient User? @relation("UserTransactions", fields: [toAddress], references: [walletAddress])
+
+  @@map("transactions")
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  tableName String   @map("table_name")
+  operation String
+  oldData   Json?    @map("old_data")
+  newData   Json?    @map("new_data")
+  userId    String?  @map("user_id")
+  timestamp DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  logLevel  String   @map("log_level")
+  message    String
+  context    String?
+  timestamp DateTime @default(now())
+
+  @@map("system_logs")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+  VERIFIED_USER
+  AGENT
+}
+
+enum PropertyStatus {
+  DRAFT
+  PENDING
+  APPROVED
+  LISTED
+  SOLD
+  REMOVED
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum TransactionType {
+  PURCHASE
+  TRANSFER
+  ESCROW
+  REFUND
+}
