@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -15,6 +15,9 @@ import { BlockchainModule } from './blockchain/blockchain.module';
 import { AuthModule } from './auth/auth.module';
 import { FilesModule } from './files/files.module';
 import { ValuationModule } from './valuation/valuation.module';
+import { ApiKeysModule } from './api-keys/api-keys.module';
+import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
+import { PropertiesModule } from './properties/properties.module';
 import configuration from './config/configuration';
 import valuationConfig from './config/valuation.config';
 
@@ -76,14 +79,22 @@ import valuationConfig from './config/valuation.config';
 
     // Business modules
     AuthModule,
+    ApiKeysModule,
     UsersModule,
     PropertiesModule,
     TransactionsModule,
     BlockchainModule,
     FilesModule,
     ValuationModule,
+    DocumentsModule,
   ],
   controllers: [],
   providers: [],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer
+      .apply(AuthRateLimitMiddleware)
+      .forRoutes('/auth*'); // Apply to all auth routes
+  }
+}
