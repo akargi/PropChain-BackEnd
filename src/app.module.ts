@@ -4,6 +4,7 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TerminusModule } from '@nestjs/terminus';
 import { BullModule } from '@nestjs/bull';
+import { APP_INTERCEPTOR } from '@nestjs/core';
 
 // Core & Database
 import { PrismaModule } from './database/prisma/prisma.module';
@@ -14,7 +15,7 @@ import valuationConfig from './config/valuation.config';
 
 // Logging
 import { LoggingModule } from './common/logging/logging.module';
-import { LoggingMiddleware } from './common/logging/logging.middleware';
+import { LoggingInterceptor } from './common/logging/logging.interceptor';
 
 // Redis
 import { RedisModule } from './common/services/redis.module';
@@ -84,13 +85,16 @@ import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
     ValuationModule,
     DocumentsModule,
   ],
+  providers: [
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: LoggingInterceptor,
+    },
+  ],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      // Correlation ID & structured logging for all routes
-      .apply(LoggingMiddleware)
-      .forRoutes('*')
       // Auth rate limiting
       .apply(AuthRateLimitMiddleware)
       .forRoutes('/auth*');

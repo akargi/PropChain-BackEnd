@@ -1,8 +1,16 @@
-import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import {
+  Injectable,
+  NestInterceptor,
+  ExecutionContext,
+  CallHandler,
+} from '@nestjs/common';
 import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { StructuredLoggerService } from './logger.service';
 
+/**
+ * Interceptor for logging incoming requests and outgoing responses
+ */
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   constructor(private readonly logger: StructuredLoggerService) {
@@ -11,28 +19,32 @@ export class LoggingInterceptor implements NestInterceptor {
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
-    const { method, url } = request;
-    // Extract correlationId safely
-    const correlationId = request['correlationId'];
-    const now = Date.now();
+    const { method, url, headers, body } = request;
+    const requestStartTime = Date.now();
+
+    // Log incoming request
+    this.logger.logRequest(method, url, {
+      userAgent: headers['user-agent'],
+      body,
+    });
 
     return next.handle().pipe(
       tap({
         next: () => {
           const response = context.switchToHttp().getResponse();
-          const duration = Date.now() - now;
-          
-          this.logger.log(
-            `${method} ${url} ${response.statusCode} - ${duration}ms`,
-            { correlationId }
-          );
+          const { statusCode } = response;
+          const duration = Date.now() - requestStartTime;
+
+          this.logger.logResponse(method, url, statusCode, duration);
         },
-        error: (err: any) => {
-          const duration = Date.now() - now;
-          // FIXED: Only passing 2 arguments to match your LoggerService
+        error: (error: any) => {
+          const duration = Date.now() - requestStartTime;
           this.logger.error(
-            `${method} ${url} Failed - ${duration}ms | Error: ${err.message}`,
-            err.stack
+            `${method} ${url} Failed in ${duration}ms`,
+            error.stack,
+            {
+              error,
+            },
           );
         },
       }),

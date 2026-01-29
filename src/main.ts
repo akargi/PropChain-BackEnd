@@ -23,8 +23,9 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
   
   // Use our new StructuredLoggerService
-  const logger = app.get(StructuredLoggerService);
-  app.useLogger(logger);
+ const logger = await app.resolve(StructuredLoggerService);
+ app.useLogger(logger);
+
 
   // Security middleware
   app.use(helmet());
