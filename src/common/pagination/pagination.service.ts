@@ -26,31 +26,8 @@ export class PaginationService {
   private readonly maxLimit = 100;
   private readonly minLimit = 1;
 
-  constructor(options?: PaginationOptions) {
-    if (options?.defaultPage) {
-      Object.defineProperty(this, 'defaultPage', {
-        value: options.defaultPage,
-        writable: false,
-      });
-    }
-    if (options?.defaultLimit) {
-      Object.defineProperty(this, 'defaultLimit', {
-        value: options.defaultLimit,
-        writable: false,
-      });
-    }
-    if (options?.maxLimit) {
-      Object.defineProperty(this, 'maxLimit', {
-        value: options.maxLimit,
-        writable: false,
-      });
-    }
-    if (options?.minLimit) {
-      Object.defineProperty(this, 'minLimit', {
-        value: options.minLimit,
-        writable: false,
-      });
-    }
+  constructor() {
+    // Uses default values
   }
 
   /**
