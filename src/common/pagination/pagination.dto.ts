@@ -1,65 +1,92 @@
-import { IsOptional, IsInt, Min, Max, IsEnum, IsString } from 'class-validator';
+import { IsInt, IsOptional, Min, Max, IsString, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
-export enum SortOrder {
-  ASC = 'ASC',
-  DESC = 'DESC',
-}
-
-export class PaginationDto {
+/**
+ * Query parameters for pagination
+ */
+export class PaginationQueryDto {
   @ApiPropertyOptional({
-    minimum: 1,
+    description: 'Page number (1-indexed)',
+    example: 1,
     default: 1,
-    description: 'Page number',
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page?: number = 1;
+  page: number = 1;
 
   @ApiPropertyOptional({
+    description: 'Number of items per page',
+    example: 10,
     minimum: 1,
     maximum: 100,
     default: 10,
-    description: 'Number of items per page',
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
-  limit?: number = 10;
+  limit: number = 10;
 
   @ApiPropertyOptional({
     description: 'Field to sort by',
     example: 'createdAt',
+    default: 'createdAt',
   })
   @IsOptional()
   @IsString()
-  sortBy?: string;
+  sortBy: string = 'createdAt';
 
   @ApiPropertyOptional({
-    enum: SortOrder,
-    default: SortOrder.DESC,
-    description: 'Sort order (ASC or DESC)',
+    description: 'Sort order',
+    example: 'desc',
+    enum: ['asc', 'desc'],
+    default: 'desc',
   })
   @IsOptional()
-  @IsEnum(SortOrder)
-  sortOrder?: SortOrder = SortOrder.DESC;
+  @IsIn(['asc', 'desc'])
+  sortOrder: 'asc' | 'desc' = 'desc';
 }
 
-export interface PaginationMeta {
+/**
+ * Pagination metadata included in list responses
+ */
+export class PaginationMetadataDto {
+  @ApiProperty({ example: 100 })
   total: number;
+
+  @ApiProperty({ example: 1 })
   page: number;
+
+  @ApiProperty({ example: 10 })
   limit: number;
+
+  @ApiProperty({ example: 10 })
   pages: number;
+
+  @ApiProperty({ example: true })
   hasNext: boolean;
+
+  @ApiProperty({ example: false })
   hasPrev: boolean;
+
+  @ApiProperty({ example: 'createdAt' })
+  sortBy: string;
+
+  @ApiProperty({ example: 'desc' })
+  sortOrder: 'asc' | 'desc';
 }
 
-export interface PaginatedResponse<T> {
+/**
+ * Generic paginated response wrapper
+ */
+export class PaginatedResponseDto<T> {
+  @ApiProperty({ isArray: true })
   data: T[];
-  meta: PaginationMeta;
+
+  @ApiProperty({ type: PaginationMetadataDto })
+  meta: PaginationMetadataDto;
 }

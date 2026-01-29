@@ -2,12 +2,14 @@ import { Module } from '@nestjs/common';
 import { ApiKeyService } from './api-key.service';
 import { ApiKeyController } from './api-key.controller';
 import { PrismaModule } from '../database/prisma/prisma.module';
-import { RedisModule } from 'node_modules/@liaoliaots/nestjs-redis/dist/redis/redis.module';
+import { PaginationService } from '../common/pagination';
+import { RedisService } from '../common/services/redis.service';
+import { RedisModule } from '@liaoliaots/nestjs-redis';
 
 @Module({
   imports: [PrismaModule, RedisModule],
   controllers: [ApiKeyController],
-  providers: [ApiKeyService],
+  providers: [ApiKeyService, PaginationService, RedisService],
   exports: [ApiKeyService],
 })
 export class ApiKeysModule {}

@@ -4,10 +4,23 @@ import { ThrottlerModule } from '@nestjs/throttler';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TerminusModule } from '@nestjs/terminus';
 import { BullModule } from '@nestjs/bull';
+
+// Core & Database
 import { PrismaModule } from './database/prisma/prisma.module';
 import { HealthModule } from './health/health.module';
-import { LoggerModule } from './common/logger/logger.module';
 import { ConfigurationModule } from './config/configuration.module';
+import configuration from './config/configuration';
+import valuationConfig from './config/valuation.config';
+
+// Logging
+import { LoggingModule } from './common/logging/logging.module';
+import { LoggingMiddleware } from './common/logging/logging.middleware';
+
+// Redis
+import { RedisModule } from './common/services/redis.module';
+import { createRedisConfig } from './common/services/redis.config';
+
+// Business Modules
 import { PropertiesModule } from './properties/properties.module';
 import { UsersModule } from './users/users.module';
 import { TransactionsModule } from './transactions/transactions.module';
@@ -16,12 +29,10 @@ import { AuthModule } from './auth/auth.module';
 import { FilesModule } from './files/files.module';
 import { ValuationModule } from './valuation/valuation.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
-import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
-import configuration from './config/configuration';
-import valuationConfig from './config/valuation.config';
 import { DocumentsModule } from './documents/documents.module';
-import { createRedisConfig } from './common/services/redis.config';
-import { RedisModule } from './common/services/redis.module';
+
+// Middleware
+import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
 
 @Module({
   imports: [
@@ -33,22 +44,22 @@ import { RedisModule } from './common/services/redis.module';
     }),
     ConfigurationModule,
 
-    // Core modules
-    LoggerModule,
+    // Core
+    LoggingModule,
     PrismaModule,
     HealthModule,
     RedisModule,
 
-    // Security and rate limiting
+    // Security & rate limiting
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService) => [
         {
           ttl: configService.get<number>('THROTTLE_TTL', 60),
           limit: configService.get<number>('THROTTLE_LIMIT', 10),
         },
       ],
-      inject: [ConfigService],
     }),
 
     // Background jobs
@@ -58,35 +69,11 @@ import { RedisModule } from './common/services/redis.module';
       useFactory: createRedisConfig,
     }),
 
-    // BullModule.forRootAsync({
-    //   imports: [ConfigModule],
-    //   useFactory: (configService: ConfigService) => ({
-    //     redis: {
-    //       host: configService.get<string>('REDIS_HOST', 'localhost'),
-    //       port: configService.get<number>('REDIS_PORT', 6379),
-    //       password: configService.get<string>('REDIS_PASSWORD'),
-    //       db: configService.get<number>('REDIS_DB', 0),
-    //     },
-    //     defaultJobOptions: {
-    //       removeOnComplete: 10,
-    //       removeOnFail: 5,
-    //       attempts: 3,
-    //       backoff: {
-    //         type: 'exponential',
-    //         delay: 2000,
-    //       },
-    //     },
-    //   }),
-    //   inject: [ConfigService],
-    // }),
-
-    // Scheduled tasks
+    // Scheduling & health
     ScheduleModule.forRoot(),
-
-    // Health checks
     TerminusModule,
 
-    // Business modules
+    // Business
     AuthModule,
     ApiKeysModule,
     UsersModule,
@@ -97,11 +84,15 @@ import { RedisModule } from './common/services/redis.module';
     ValuationModule,
     DocumentsModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthRateLimitMiddleware).forRoutes('/auth*'); // Apply to all auth routes
+    consumer
+      // Correlation ID & structured logging for all routes
+      .apply(LoggingMiddleware)
+      .forRoutes('*')
+      // Auth rate limiting
+      .apply(AuthRateLimitMiddleware)
+      .forRoutes('/auth*');
   }
 }
