@@ -64,8 +64,7 @@ jobs:
         run: npm run build
 
       - name: Run unit tests
-        run: npm run test:unit -- --testPathIgnorePatterns="database" 
-        continue-on-error: true
+        run: npm run test:unit
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propchain_test
           REDIS_HOST: localhost
@@ -88,7 +87,7 @@ jobs:
         continue-on-error: true
 
       - name: Generate test coverage
-        run: npm run test:cov -- --testPathIgnorePatterns="database" || true
+        run: npm run test:cov || true
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/propchain_test
           REDIS_HOST: localhost
