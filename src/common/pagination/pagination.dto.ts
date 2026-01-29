@@ -1,103 +1,82 @@
 import { IsInt, IsOptional, Min, Max, IsString, IsIn } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * Query parameters for pagination
  */
 export class PaginationQueryDto {
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Page number (1-indexed)',
     example: 1,
-    required: false,
+    default: 1,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
-  page?: number = 1;
+  page: number = 1;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Number of items per page',
     example: 10,
-    required: false,
+    minimum: 1,
+    maximum: 100,
+    default: 10,
   })
   @IsOptional()
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @Max(100)
-  limit?: number = 10;
+  limit: number = 10;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Field to sort by',
     example: 'createdAt',
-    required: false,
+    default: 'createdAt',
   })
   @IsOptional()
   @IsString()
-  sortBy?: string = 'createdAt';
+  sortBy: string = 'createdAt';
 
-  @ApiProperty({
-    description: 'Sort order: asc or desc',
+  @ApiPropertyOptional({
+    description: 'Sort order',
     example: 'desc',
-    required: false,
+    enum: ['asc', 'desc'],
+    default: 'desc',
   })
   @IsOptional()
   @IsIn(['asc', 'desc'])
-  sortOrder?: 'asc' | 'desc' = 'desc';
+  sortOrder: 'asc' | 'desc' = 'desc';
 }
 
 /**
  * Pagination metadata included in list responses
  */
 export class PaginationMetadataDto {
-  @ApiProperty({
-    description: 'Total number of items',
-    example: 100,
-  })
+  @ApiProperty({ example: 100 })
   total: number;
 
-  @ApiProperty({
-    description: 'Current page number',
-    example: 1,
-  })
+  @ApiProperty({ example: 1 })
   page: number;
 
-  @ApiProperty({
-    description: 'Items per page',
-    example: 10,
-  })
+  @ApiProperty({ example: 10 })
   limit: number;
 
-  @ApiProperty({
-    description: 'Total number of pages',
-    example: 10,
-  })
+  @ApiProperty({ example: 10 })
   pages: number;
 
-  @ApiProperty({
-    description: 'Whether there is a next page',
-    example: true,
-  })
+  @ApiProperty({ example: true })
   hasNext: boolean;
 
-  @ApiProperty({
-    description: 'Whether there is a previous page',
-    example: false,
-  })
+  @ApiProperty({ example: false })
   hasPrev: boolean;
 
-  @ApiProperty({
-    description: 'Field sorted by',
-    example: 'createdAt',
-  })
+  @ApiProperty({ example: 'createdAt' })
   sortBy: string;
 
-  @ApiProperty({
-    description: 'Sort direction',
-    example: 'desc',
-  })
+  @ApiProperty({ example: 'desc' })
   sortOrder: 'asc' | 'desc';
 }
 
@@ -105,13 +84,9 @@ export class PaginationMetadataDto {
  * Generic paginated response wrapper
  */
 export class PaginatedResponseDto<T> {
-  @ApiProperty({
-    description: 'Array of items',
-  })
+  @ApiProperty({ isArray: true })
   data: T[];
 
-  @ApiProperty({
-    description: 'Pagination metadata',
-  })
+  @ApiProperty({ type: PaginationMetadataDto })
   meta: PaginationMetadataDto;
 }

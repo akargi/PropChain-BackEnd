@@ -42,6 +42,7 @@ export interface JoiSchemaConfig {
   // Rate Limiting
   THROTTLE_TTL: number;
   THROTTLE_LIMIT: number;
+  API_KEY_RATE_LIMIT_PER_MINUTE: number;
 
   // FIX: Added missing property to match configuration.ts
   API_KEY_RATE_LIMIT_PER_MINUTE: number;

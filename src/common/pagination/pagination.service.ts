@@ -1,22 +1,16 @@
 import { Injectable } from '@nestjs/common';
-import { PaginationQueryDto, PaginationMetadataDto, PaginatedResponseDto } from './pagination.dto';
+import {
+  PaginationQueryDto,
+  PaginationMetadataDto,
+  PaginatedResponseDto,
+} from './pagination.dto';
 
 /**
- * Interface for items that may be paginated
+ * Interface for paginated data sources
  */
 export interface IPaginatedData<T> {
   data: T[];
   total: number;
-}
-
-/**
- * Configuration options for pagination
- */
-export interface PaginationOptions {
-  defaultPage?: number;
-  defaultLimit?: number;
-  maxLimit?: number;
-  minLimit?: number;
 }
 
 @Injectable()
@@ -26,115 +20,124 @@ export class PaginationService {
   private readonly maxLimit = 100;
   private readonly minLimit = 1;
 
-  constructor() {
-    // Uses default values
-  }
-
   /**
-   * Calculate pagination offset and limit
-   * @param page Page number (1-indexed)
-   * @param limit Items per page
-   * @returns Object with skip (offset) and take (limit)
+   * Calculate skip/take for DB queries
    */
-  calculatePagination(page: number = this.defaultPage, limit: number = this.defaultLimit) {
-    const validPage = Math.max(page, this.defaultPage);
-    const validLimit = Math.max(Math.min(limit, this.maxLimit), this.minLimit);
-    const skip = (validPage - 1) * validLimit;
-
-    return { skip, take: validLimit };
-  }
-
-  /**
-   * Create pagination metadata
-   * @param total Total number of items
-   * @param page Current page
-   * @param limit Items per page
-   * @param sortBy Field being sorted by
-   * @param sortOrder Sort direction
-   * @returns Pagination metadata
-   */
-  createMetadata(
-    total: number,
+  calculatePagination(
     page: number = this.defaultPage,
     limit: number = this.defaultLimit,
-    sortBy: string = 'createdAt',
-    sortOrder: 'asc' | 'desc' = 'desc',
-  ): PaginationMetadataDto {
+  ) {
     const validPage = Math.max(page, this.defaultPage);
-    const validLimit = Math.max(Math.min(limit, this.maxLimit), this.minLimit);
-    const pages = Math.ceil(total / validLimit);
+    const validLimit = Math.max(
+      Math.min(limit, this.maxLimit),
+      this.minLimit,
+    );
 
     return {
-      total,
-      page: validPage,
-      limit: validLimit,
-      pages,
-      hasNext: validPage < pages,
-      hasPrev: validPage > 1,
-      sortBy,
-      sortOrder,
+      skip: (validPage - 1) * validLimit,
+      take: validLimit,
     };
   }
 
   /**
-   * Format a paginated response
-   * @param data Items to return
-   * @param total Total number of items
-   * @param paginationQuery Query parameters
-   * @returns Formatted paginated response
+   * Sanitize sort field to avoid injection
+   * Allows alphanumeric, underscore, and dot
    */
-  formatResponse<T>(
-    data: T[],
-    total: number,
-    paginationQuery: PaginationQueryDto,
-  ): PaginatedResponseDto<T> {
-    const page = paginationQuery.page || this.defaultPage;
-    const limit = paginationQuery.limit || this.defaultLimit;
-    const sortBy = paginationQuery.sortBy || 'createdAt';
-    const sortOrder = paginationQuery.sortOrder || 'desc';
+  sanitizeSortField(field?: string): string {
+    if (!field) {
+      return 'createdAt';
+    }
 
-    const meta = this.createMetadata(total, page, limit, sortBy, sortOrder);
-
-    return {
-      data,
-      meta,
-    };
+    return field.replace(/[^a-zA-Z0-9_.]/g, '');
   }
 
   /**
-   * Parse pagination query and return validated values
-   * @param query Pagination query DTO
-   * @returns Validated pagination values
+   * Parse and normalize pagination query
    */
   parsePaginationQuery(query: Partial<PaginationQueryDto>) {
-    const page = query.page || this.defaultPage;
-    const limit = query.limit || this.defaultLimit;
-    const sortBy = query.sortBy || 'createdAt';
-    const sortOrder = query.sortOrder || 'desc';
+    const page = query.page ?? this.defaultPage;
+    const limit = query.limit ?? this.defaultLimit;
 
     return {
       page: Math.max(page, this.defaultPage),
       limit: Math.max(Math.min(limit, this.maxLimit), this.minLimit),
+      sortBy: this.sanitizeSortField(query.sortBy),
+      sortOrder: query.sortOrder ?? 'desc',
+    };
+  }
+
+  /**
+   * Create pagination metadata
+   */
+  createMetadata(
+    total: number,
+    page: number,
+    limit: number,
+    sortBy: string,
+    sortOrder: 'asc' | 'desc',
+  ): PaginationMetadataDto {
+    const pages = Math.max(Math.ceil(total / limit), 1);
+
+    return {
+      total,
+      page,
+      limit,
+      pages,
+      hasNext: page < pages,
+      hasPrev: page > 1,
       sortBy,
       sortOrder,
     };
   }
 
   /**
-   * Get Prisma query options from pagination query
-   * Useful for Prisma clients
-   * @param query Pagination query DTO
-   * @returns Object with skip, take, orderBy for Prisma
+   * Validate if requested page exists
    */
-  getPrismaOptions(query: PaginationQueryDto, orderByField: string = 'createdAt') {
-    const { page, limit, sortBy, sortOrder } = this.parsePaginationQuery(query);
+  validatePage(page: number, total: number, limit: number): boolean {
+    const totalPages = Math.max(Math.ceil(total / limit), 1);
+    return page >= 1 && page <= totalPages;
+  }
+
+  /**
+   * Format paginated API response
+   */
+  formatResponse<T>(
+    data: T[],
+    total: number,
+    query: PaginationQueryDto,
+  ): PaginatedResponseDto<T> {
+    const { page, limit, sortBy, sortOrder } =
+      this.parsePaginationQuery(query);
+
+    return {
+      data,
+      meta: this.createMetadata(
+        total,
+        page,
+        limit,
+        sortBy,
+        sortOrder,
+      ),
+    };
+  }
+
+  /**
+   * Build Prisma pagination options
+   */
+  getPrismaOptions(
+    query: PaginationQueryDto,
+    fallbackSortField = 'createdAt',
+  ) {
+    const { page, limit, sortBy, sortOrder } =
+      this.parsePaginationQuery(query);
+
     const { skip, take } = this.calculatePagination(page, limit);
 
     return {
       skip,
       take,
       orderBy: {
-        [sortBy || orderByField]: sortOrder,
+        [sortBy || fallbackSortField]: sortOrder,
       },
     };
   }

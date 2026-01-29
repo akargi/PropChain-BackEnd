@@ -10,10 +10,15 @@ import { PrismaModule } from './database/prisma/prisma.module';
 import { HealthModule } from './health/health.module';
 import { ConfigurationModule } from './config/configuration.module';
 import configuration from './config/configuration';
+import valuationConfig from './config/valuation.config';
 
-// --- OUR NEW LOGGING ---
+// Logging
 import { LoggingModule } from './common/logging/logging.module';
 import { LoggingMiddleware } from './common/logging/logging.middleware';
+
+// Redis
+import { RedisModule } from './common/services/redis.module';
+import { createRedisConfig } from './common/services/redis.config';
 
 // Business Modules
 import { PropertiesModule } from './properties/properties.module';
@@ -22,8 +27,9 @@ import { TransactionsModule } from './transactions/transactions.module';
 import { BlockchainModule } from './blockchain/blockchain.module';
 import { AuthModule } from './auth/auth.module';
 import { FilesModule } from './files/files.module';
+import { ValuationModule } from './valuation/valuation.module';
 import { ApiKeysModule } from './api-keys/api-keys.module';
-import { DocumentsModule } from './documents/documents.module'; // Added missing import
+import { DocumentsModule } from './documents/documents.module';
 
 // Middleware
 import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
@@ -33,55 +39,41 @@ import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
     // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [configuration],
+      load: [configuration, valuationConfig],
       envFilePath: ['.env.local', '.env.development', '.env'],
     }),
     ConfigurationModule,
 
-    // Core modules
-    LoggingModule, // Changed to our new LoggingModule
+    // Core
+    LoggingModule,
     PrismaModule,
     HealthModule,
+    RedisModule,
 
-    // Security and rate limiting
+    // Security & rate limiting
     ThrottlerModule.forRootAsync({
       imports: [ConfigModule],
+      inject: [ConfigService],
       useFactory: (configService: ConfigService) => [
         {
           ttl: configService.get<number>('THROTTLE_TTL', 60),
           limit: configService.get<number>('THROTTLE_LIMIT', 10),
         },
       ],
-      inject: [ConfigService],
     }),
 
     // Background jobs
     BullModule.forRootAsync({
       imports: [ConfigModule],
-      useFactory: (configService: ConfigService) => ({
-        redis: {
-          host: configService.get<string>('REDIS_HOST', 'localhost'),
-          port: configService.get<number>('REDIS_PORT', 6379),
-          password: configService.get<string>('REDIS_PASSWORD'),
-          db: configService.get<number>('REDIS_DB', 0),
-        },
-        defaultJobOptions: {
-          removeOnComplete: 10,
-          removeOnFail: 5,
-          attempts: 3,
-          backoff: {
-            type: 'exponential',
-            delay: 2000,
-          },
-        },
-      }),
       inject: [ConfigService],
+      useFactory: createRedisConfig,
     }),
 
+    // Scheduling & health
     ScheduleModule.forRoot(),
     TerminusModule,
 
-    // Business modules
+    // Business
     AuthModule,
     ApiKeysModule,
     UsersModule,
@@ -89,18 +81,17 @@ import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
     TransactionsModule,
     BlockchainModule,
     FilesModule,
+    ValuationModule,
     DocumentsModule,
   ],
-  controllers: [],
-  providers: [],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
-      // 1. Apply our new Correlation ID Logging to EVERY route
+      // Correlation ID & structured logging for all routes
       .apply(LoggingMiddleware)
       .forRoutes('*')
-      // 2. Keep your existing Auth Rate Limiting
+      // Auth rate limiting
       .apply(AuthRateLimitMiddleware)
       .forRoutes('/auth*');
   }

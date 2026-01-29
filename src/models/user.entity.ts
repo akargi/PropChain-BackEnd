@@ -5,24 +5,31 @@ export { UserRole };
 export class User implements PrismaUser {
   id: string;
   email: string;
-  password: string;
+  password: string | null;
+
   firstName: string | null;
   lastName: string | null;
+
   walletAddress: string | null;
+
   isVerified: boolean;
+
   roleId: string | null;
+  role: UserRole;
+
   createdAt: Date;
   updatedAt: Date;
-  
-  // FIX: Removed '?' to make this property required, matching the PrismaUser interface
-  role: UserRole; 
 }
 
+/**
+ * Input used when creating a user
+ * Flexible enough for email/password and Web3 users
+ */
 export type CreateUserInput = {
   email: string;
+  password?: string;
   firstName?: string;
   lastName?: string;
-  password?: string;
   walletAddress?: string;
   role?: UserRole;
   roleId?: string;

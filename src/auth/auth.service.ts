@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException, BadRequestException, ConflictException } from '@nestjs/common';
+import {
+  Injectable,
+  UnauthorizedException,
+  BadRequestException,
+} from '@nestjs/common';
 import { UserService } from '../users/user.service';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -19,18 +23,33 @@ export class AuthService {
   async register(createUserDto: CreateUserDto) {
     const user = await this.userService.create(createUserDto);
     await this.sendVerificationEmail(user.id, user.email);
-    return { message: 'User registered successfully. Please check your email for verification.' };
+    return {
+      message: 'User registered successfully. Please check your email for verification.',
+    };
   }
 
-  async login(credentials: { email?: string; password?: string; walletAddress?: string; signature?: string }) {
+  async login(credentials: {
+    email?: string;
+    password?: string;
+    walletAddress?: string;
+    signature?: string;
+  }) {
     let user: any;
-    
+
     if (credentials.email && credentials.password) {
-      user = await this.validateUserByEmail(credentials.email, credentials.password);
+      user = await this.validateUserByEmail(
+        credentials.email,
+        credentials.password,
+      );
     } else if (credentials.walletAddress) {
-      user = await this.validateUserByWallet(credentials.walletAddress, credentials.signature);
+      user = await this.validateUserByWallet(
+        credentials.walletAddress,
+        credentials.signature,
+      );
     } else {
-      throw new BadRequestException('Email/password or wallet address/signature required');
+      throw new BadRequestException(
+        'Email/password or wallet address/signature required',
+      );
     }
 
     if (!user) {
@@ -42,13 +61,12 @@ export class AuthService {
 
   async validateUserByEmail(email: string, password: string): Promise<any> {
     const user = await this.userService.findByEmail(email);
-    
+
     if (!user || !user.password) {
       throw new UnauthorizedException('Invalid credentials');
     }
 
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -57,9 +75,12 @@ export class AuthService {
     return result;
   }
 
-  async validateUserByWallet(walletAddress: string, signature?: string): Promise<any> {
+  async validateUserByWallet(
+    walletAddress: string,
+    signature?: string,
+  ): Promise<any> {
     let user = await this.userService.findByWalletAddress(walletAddress);
-    
+
     if (!user) {
       user = await this.userService.create({
         email: `${walletAddress}@wallet.auth`,
@@ -81,18 +102,19 @@ export class AuthService {
       });
 
       const user = await this.userService.findById(payload.sub);
-      
       if (!user) {
         throw new UnauthorizedException('User not found');
       }
 
-      const storedToken = await this.redisService.get(`refresh_token:${payload.sub}`);
+      const storedToken = await this.redisService.get(
+        `refresh_token:${payload.sub}`,
+      );
       if (storedToken !== refreshToken) {
         throw new UnauthorizedException('Invalid refresh token');
       }
 
       return this.generateTokens(user);
-    } catch (error) {
+    } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
   }
@@ -104,7 +126,6 @@ export class AuthService {
 
   async forgotPassword(email: string) {
     const user = await this.userService.findByEmail(email);
-    
     if (!user) {
       return { message: 'If email exists, a reset link has been sent' };
     }
@@ -112,10 +133,9 @@ export class AuthService {
     const resetToken = uuidv4();
     const resetTokenExpiry = Date.now() + 3600000;
 
-    // FIX: Removed 3rd argument to match RedisService expectations
     await this.redisService.set(
       `password_reset:${resetToken}`,
-      JSON.stringify({ userId: user.id, expiry: resetTokenExpiry })
+      JSON.stringify({ userId: user.id, expiry: resetTokenExpiry }),
     );
 
     await this.sendPasswordResetEmail(user.email, resetToken);
@@ -123,8 +143,10 @@ export class AuthService {
   }
 
   async resetPassword(resetToken: string, newPassword: string) {
-    const resetData = await this.redisService.get(`password_reset:${resetToken}`);
-    
+    const resetData = await this.redisService.get(
+      `password_reset:${resetToken}`,
+    );
+
     if (!resetData) {
       throw new BadRequestException('Invalid or expired reset token');
     }
@@ -143,8 +165,10 @@ export class AuthService {
   }
 
   async verifyEmail(token: string) {
-    const verificationData = await this.redisService.get(`email_verification:${token}`);
-    
+    const verificationData = await this.redisService.get(
+      `email_verification:${token}`,
+    );
+
     if (!verificationData) {
       throw new BadRequestException('Invalid or expired verification token');
     }
@@ -159,22 +183,23 @@ export class AuthService {
   private generateTokens(user: any) {
     const payload = { sub: user.id, email: user.email };
 
-    // FIX: Cast expiresIn to any to satisfy type definition
     const accessToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_EXPIRES_IN', '15m') as any,
+      expiresIn: this.configService.get<string>(
+        'JWT_EXPIRES_IN',
+        '15m',
+      ) as any,
     });
 
     const refreshToken = this.jwtService.sign(payload, {
       secret: this.configService.get<string>('JWT_REFRESH_SECRET'),
-      expiresIn: this.configService.get<string>('JWT_REFRESH_EXPIRES_IN', '7d') as any,
+      expiresIn: this.configService.get<string>(
+        'JWT_REFRESH_EXPIRES_IN',
+        '7d',
+      ) as any,
     });
 
-    // FIX: Removed 3rd argument for RedisService
-    this.redisService.set(
-      `refresh_token:${user.id}`,
-      refreshToken
-    );
+    this.redisService.set(`refresh_token:${user.id}`, refreshToken);
 
     return {
       access_token: accessToken,
@@ -190,15 +215,18 @@ export class AuthService {
 
   private async sendVerificationEmail(userId: string, email: string) {
     const verificationToken = uuidv4();
-    // FIX: Removed 3rd argument
     await this.redisService.set(
       `email_verification:${verificationToken}`,
-      JSON.stringify({ userId })
+      JSON.stringify({ userId }),
     );
-    console.log(`Verification email sent to ${email} with token: ${verificationToken}`);
+    console.log(
+      `Verification email sent to ${email} with token: ${verificationToken}`,
+    );
   }
 
   private async sendPasswordResetEmail(email: string, resetToken: string) {
-    console.log(`Password reset email sent to ${email} with token: ${resetToken}`);
+    console.log(
+      `Password reset email sent to ${email} with token: ${resetToken}`,
+    );
   }
 }
