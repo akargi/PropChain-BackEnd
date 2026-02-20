@@ -69,9 +69,7 @@ export class DataRetentionService {
     batchSize: number = 1000,
     dryRun: boolean = false,
   ): Promise<{ deletedCount: number; tableName: string; batchSize: number }> {
-    const policies = tableName 
-      ? this.defaultPolicies.filter(p => p.tableName === tableName)
-      : this.defaultPolicies;
+    const policies = tableName ? this.defaultPolicies.filter(p => p.tableName === tableName) : this.defaultPolicies;
 
     if (policies.length === 0) {
       throw new Error(`No retention policy found for table: ${tableName}`);
@@ -83,31 +81,27 @@ export class DataRetentionService {
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - policy.retentionPeriodDays);
 
-      this.logger.log(
-        `Cleaning up ${policy.tableName} data older than ${cutoffDate.toISOString()}`
-      );
+      this.logger.log(`Cleaning up ${policy.tableName} data older than ${cutoffDate.toISOString()}`);
 
       // Calculate how many records would be affected
       const countResult = await this.getDeletableRecordCount(policy, cutoffDate);
-      
+
       if (countResult === 0) {
         this.logger.log(`No records to delete for ${policy.tableName}`);
         continue;
       }
 
       if (dryRun) {
-        this.logger.log(
-          `[DRY RUN] Would delete ${countResult} records from ${policy.tableName}`
-        );
+        this.logger.log(`[DRY RUN] Would delete ${countResult} records from ${policy.tableName}`);
         totalDeleted += countResult;
         continue;
       }
 
       // Actually perform the deletion in batches
       const deletedCount = await this.deleteInBatches(policy, cutoffDate, batchSize);
-      
+
       totalDeleted += deletedCount;
-      
+
       this.logger.log(`Deleted ${deletedCount} records from ${policy.tableName}`);
 
       // Log the cleanup action
@@ -134,10 +128,7 @@ export class DataRetentionService {
   /**
    * Calculate how many records would be deleted for a given policy
    */
-  async getDeletableRecordCount(
-    policy: RetentionPolicy,
-    cutoffDate: Date,
-  ): Promise<number> {
+  async getDeletableRecordCount(policy: RetentionPolicy, cutoffDate: Date): Promise<number> {
     switch (policy.tableName) {
       case 'audit_logs':
         return this.prisma.auditLog.count({
@@ -190,11 +181,7 @@ export class DataRetentionService {
   /**
    * Delete records in batches to avoid locking issues
    */
-  private async deleteInBatches(
-    policy: RetentionPolicy,
-    cutoffDate: Date,
-    batchSize: number,
-  ): Promise<number> {
+  private async deleteInBatches(policy: RetentionPolicy, cutoffDate: Date, batchSize: number): Promise<number> {
     let totalDeleted = 0;
     let batchDeleted = 0;
 
@@ -209,13 +196,9 @@ export class DataRetentionService {
   /**
    * Delete a single batch of records
    */
-  private async deleteBatch(
-    policy: RetentionPolicy,
-    cutoffDate: Date,
-    batchSize: number,
-  ): Promise<number> {
+  private async deleteBatch(policy: RetentionPolicy, cutoffDate: Date, batchSize: number): Promise<number> {
     // Use Prisma transaction to ensure data consistency
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async tx => {
       let deletedCount = 0;
 
       switch (policy.tableName) {
@@ -227,7 +210,7 @@ export class DataRetentionService {
             take: batchSize,
             select: { id: true },
           });
-          
+
           if (auditLogs.length > 0) {
             await tx.auditLog.deleteMany({
               where: {
@@ -246,7 +229,7 @@ export class DataRetentionService {
             take: batchSize,
             select: { id: true },
           });
-          
+
           if (systemLogs.length > 0) {
             await tx.systemLog.deleteMany({
               where: {
@@ -260,15 +243,12 @@ export class DataRetentionService {
         case 'documents':
           const documents = await tx.document.findMany({
             where: {
-              AND: [
-                { createdAt: { lt: cutoffDate } },
-                { expiresAt: { lt: cutoffDate } },
-              ],
+              AND: [{ createdAt: { lt: cutoffDate } }, { expiresAt: { lt: cutoffDate } }],
             },
             take: batchSize,
             select: { id: true },
           });
-          
+
           if (documents.length > 0) {
             await tx.document.deleteMany({
               where: {
@@ -287,7 +267,7 @@ export class DataRetentionService {
             take: batchSize,
             select: { id: true },
           });
-          
+
           if (transactions.length > 0) {
             await tx.transaction.deleteMany({
               where: {
@@ -306,7 +286,7 @@ export class DataRetentionService {
             take: batchSize,
             select: { id: true },
           });
-          
+
           if (properties.length > 0) {
             await tx.property.deleteMany({
               where: {
@@ -325,7 +305,7 @@ export class DataRetentionService {
             take: batchSize,
             select: { id: true },
           });
-          
+
           if (roleChangeLogs.length > 0) {
             await tx.roleChangeLog.deleteMany({
               where: {
@@ -356,12 +336,14 @@ export class DataRetentionService {
   /**
    * Get statistics about data retention compliance
    */
-  async getRetentionStats(): Promise<{
-    tableName: string;
-    totalRecords: number;
-    expiredRecords: number;
-    compliancePercentage: number;
-  }[]> {
+  async getRetentionStats(): Promise<
+    {
+      tableName: string;
+      totalRecords: number;
+      expiredRecords: number;
+      compliancePercentage: number;
+    }[]
+  > {
     const stats = [];
 
     for (const policy of this.defaultPolicies) {
@@ -373,9 +355,7 @@ export class DataRetentionService {
         this.getDeletableRecordCount(policy, cutoffDate),
       ]);
 
-      const compliancePercentage = totalRecords > 0 
-        ? ((totalRecords - expiredRecords) / totalRecords) * 100
-        : 100;
+      const compliancePercentage = totalRecords > 0 ? ((totalRecords - expiredRecords) / totalRecords) * 100 : 100;
 
       stats.push({
         tableName: policy.tableName,
@@ -431,7 +411,7 @@ export class DataRetentionService {
     }
 
     const deletedCount = await this.deleteInBatches(policy, cutoffDate, batchSize);
-    
+
     await this.auditService.logAction({
       tableName: 'data_retention',
       operation: AuditOperation.DELETE,

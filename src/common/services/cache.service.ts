@@ -124,11 +124,7 @@ export class CacheService {
   /**
    * Get a value from cache with auto-population if not exists
    */
-  async wrap<T>(
-    key: string,
-    factory: () => Promise<T>,
-    options?: CacheOptions,
-  ): Promise<T> {
+  async wrap<T>(key: string, factory: () => Promise<T>, options?: CacheOptions): Promise<T> {
     // Try to get from cache first
     const cachedValue = await this.get<T>(key);
     if (cachedValue !== undefined) {
@@ -137,10 +133,10 @@ export class CacheService {
 
     // If not in cache, call the factory function
     const freshValue = await factory();
-    
+
     // Set in cache with options
     await this.set(key, freshValue, options);
-    
+
     return freshValue;
   }
 
@@ -300,12 +296,9 @@ export class CacheService {
   /**
    * Invalidate cache with condition
    */
-  async conditionalInvalidate(
-    pattern: string, 
-    condition: (value: any) => boolean
-  ): Promise<void> {
+  async conditionalInvalidate(pattern: string, condition: (value: any) => boolean): Promise<void> {
     const keys = await this.keys(pattern);
-    
+
     for (const key of keys) {
       const value = await this.get(key);
       if (value && condition(value)) {
@@ -341,25 +334,21 @@ export class CacheService {
    */
   async invalidateOlderThan(keyPattern: string, maxAgeSeconds: number): Promise<void> {
     const keys = await this.keys(keyPattern);
-    const cutoffTime = Date.now() - (maxAgeSeconds * 1000);
-    
+    const cutoffTime = Date.now() - maxAgeSeconds * 1000;
+
     for (const key of keys) {
       // For Redis, we'll rely on TTL, but we can also implement manual checks
       // For now, we'll just invalidate all matching keys
       await this.del(key);
     }
-    
+
     this.logger.log(`Invalidated cache entries older than ${maxAgeSeconds}s for pattern: ${keyPattern}`);
   }
 
   /**
    * Get cache with fallback mechanism
    */
-  async getWithFallback<T>(
-    key: string, 
-    fallbackFactory: () => Promise<T>, 
-    options?: CacheOptions
-  ): Promise<T> {
+  async getWithFallback<T>(key: string, fallbackFactory: () => Promise<T>, options?: CacheOptions): Promise<T> {
     try {
       // First, try primary cache
       const cachedValue = await this.get<T>(key);
@@ -373,7 +362,7 @@ export class CacheService {
       return freshValue;
     } catch (error) {
       this.logger.error(`Cache operation failed for key ${key}, attempting fallback: ${error.message}`);
-      
+
       // Try fallback even if cache operations failed
       try {
         return await fallbackFactory();
@@ -388,18 +377,18 @@ export class CacheService {
    * Conditional cache update with version checking
    */
   async conditionalSet<T>(
-    key: string, 
-    value: T, 
-    condition: (cachedValue?: T) => boolean, 
-    options?: CacheOptions
+    key: string,
+    value: T,
+    condition: (cachedValue?: T) => boolean,
+    options?: CacheOptions,
   ): Promise<boolean> {
     const currentValue = await this.get<T>(key);
-    
+
     if (condition(currentValue)) {
       await this.set(key, value, options);
       return true;
     }
-    
+
     return false;
   }
 
@@ -408,7 +397,7 @@ export class CacheService {
    */
   async mget<T>(...keys: string[]): Promise<(T | undefined)[]> {
     const results: (T | undefined)[] = [];
-    
+
     for (const key of keys) {
       try {
         const value = await this.get<T>(key);
@@ -418,7 +407,7 @@ export class CacheService {
         results.push(undefined);
       }
     }
-    
+
     return results;
   }
 
@@ -426,10 +415,8 @@ export class CacheService {
    * Batch set multiple values
    */
   async mset<T>(entries: Array<{ key: string; value: T; options?: CacheOptions }>): Promise<void> {
-    const promises = entries.map(entry => 
-      this.set(entry.key, entry.value, entry.options)
-    );
-    
+    const promises = entries.map(entry => this.set(entry.key, entry.value, entry.options));
+
     await Promise.all(promises);
   }
 
@@ -458,13 +445,15 @@ export class CacheService {
   /**
    * Warm the cache with frequently accessed data
    */
-  async warmCache(warmupTasks: Array<{
-    key: string;
-    factory: () => Promise<any>;
-    options?: CacheOptions;
-    condition?: () => boolean;
-  }>): Promise<void> {
-    const promises = warmupTasks.map(async (task) => {
+  async warmCache(
+    warmupTasks: Array<{
+      key: string;
+      factory: () => Promise<any>;
+      options?: CacheOptions;
+      condition?: () => boolean;
+    }>,
+  ): Promise<void> {
+    const promises = warmupTasks.map(async task => {
       try {
         // Check condition if provided
         if (task.condition && !task.condition()) {
@@ -493,12 +482,14 @@ export class CacheService {
   /**
    * Warm the cache with frequently accessed data in background
    */
-  async warmCacheBackground(warmupTasks: Array<{
-    key: string;
-    factory: () => Promise<any>;
-    options?: CacheOptions;
-    condition?: () => boolean;
-  }>): Promise<void> {
+  async warmCacheBackground(
+    warmupTasks: Array<{
+      key: string;
+      factory: () => Promise<any>;
+      options?: CacheOptions;
+      condition?: () => boolean;
+    }>,
+  ): Promise<void> {
     // Run cache warming in background to not block the main thread
     setImmediate(async () => {
       await this.warmCache(warmupTasks);
@@ -512,7 +503,7 @@ export class CacheService {
     // In a real implementation, this would track access patterns
     // For now, return common patterns
     const allKeys = await this.keys('*');
-    
+
     // Sort by access frequency (this is a simplified version)
     // In production, we'd track access counts per key
     return allKeys.slice(0, limit);
@@ -524,20 +515,16 @@ export class CacheService {
   async preloadCommonPatterns(): Promise<void> {
     // Preload common patterns like popular property valuations
     // This would typically be scheduled or triggered based on usage analytics
-    
+
     // Example: Preload top 10 most viewed properties
     // This would need integration with analytics data
-    
+
     this.logger.log('Starting common patterns preload');
-    
+
     // In a real system, this would fetch from analytics or business logic
     // For demonstration, we'll create some common patterns
-    const commonPatterns = [
-      'property:popular:*',
-      'valuation:recent:*',
-      'user:active:*',
-    ];
-    
+    const commonPatterns = ['property:popular:*', 'valuation:recent:*', 'user:active:*'];
+
     for (const pattern of commonPatterns) {
       const keys = await this.keys(pattern);
       this.logger.log(`Preloading ${keys.length} keys matching pattern: ${pattern}`);
@@ -557,19 +544,19 @@ export class CacheService {
     try {
       // Get total number of keys
       const keys = await this.keys('*');
-      
+
       // Calculate overall hit rate
       let totalHits = 0;
       let totalMisses = 0;
-      
+
       for (const [_, metrics] of this.metrics) {
         totalHits += metrics.hits;
         totalMisses += metrics.misses;
       }
-      
+
       const totalRequests = totalHits + totalMisses;
       const hitRateOverall = totalRequests > 0 ? totalHits / totalRequests : 0;
-      
+
       // Get memory usage info from Redis
       let memoryUsage = 0;
       try {
@@ -578,7 +565,7 @@ export class CacheService {
       } catch (error) {
         this.logger.warn(`Could not get memory usage: ${error.message}`);
       }
-      
+
       return {
         size: keys.length,
         memoryUsage,
@@ -597,7 +584,7 @@ export class CacheService {
    */
   exportMetrics(): Record<string, any> {
     const exportData: Record<string, any> = {};
-    
+
     // Add metrics for each namespace
     for (const [namespace, metrics] of this.metrics) {
       exportData[namespace] = {
@@ -607,26 +594,26 @@ export class CacheService {
         totalRequests: metrics.totalRequests,
       };
     }
-    
+
     // Add overall stats
     let totalHits = 0;
     let totalMisses = 0;
-    
+
     for (const [_, metrics] of this.metrics) {
       totalHits += metrics.hits;
       totalMisses += metrics.misses;
     }
-    
+
     const totalRequests = totalHits + totalMisses;
     const overallHitRate = totalRequests > 0 ? totalHits / totalRequests : 0;
-    
+
     exportData.overall = {
       totalHits,
       totalMisses,
       totalRequests,
       hitRate: overallHitRate,
     };
-    
+
     return exportData;
   }
 
@@ -669,12 +656,15 @@ export class CacheService {
     try {
       // Use Redis pub/sub to notify other instances of cache invalidation
       await this.redisService.incr('cache:version'); // Increment global version
-      await this.redisService.publish('cache:invalidation', JSON.stringify({
-        key,
-        timestamp: Date.now(),
-        nodeId: this.getNodeId(),
-      }));
-      
+      await this.redisService.publish(
+        'cache:invalidation',
+        JSON.stringify({
+          key,
+          timestamp: Date.now(),
+          nodeId: this.getNodeId(),
+        }),
+      );
+
       this.logger.log(`Published cache invalidation event for key: ${key}`);
     } catch (error) {
       this.logger.error(`Failed to publish cache invalidation event: ${error.message}`);
@@ -688,14 +678,14 @@ export class CacheService {
     try {
       // Set up subscription to listen for cache invalidation events from other nodes
       const subscriber = this.redisService.getRedisInstance();
-      
+
       await subscriber.subscribe('cache:invalidation');
-      
+
       subscriber.on('message', async (channel, message) => {
         if (channel === 'cache:invalidation') {
           try {
             const event = JSON.parse(message);
-            
+
             // Only invalidate if it's from another node
             if (event.nodeId !== this.getNodeId()) {
               await this.del(event.key);
@@ -706,7 +696,7 @@ export class CacheService {
           }
         }
       });
-      
+
       this.logger.log('Subscribed to cache invalidation events for distributed consistency');
     } catch (error) {
       this.logger.error(`Failed to subscribe to cache invalidation events: ${error.message}`);
@@ -727,7 +717,7 @@ export class CacheService {
   async acquireDistributedLock(key: string, ttl: number = 30): Promise<boolean> {
     const lockKey = `lock:${key}`;
     const lockValue = this.getNodeId();
-    
+
     try {
       // Try to set lock with NX (only if not exists) and EX (expire time)
       const result = await this.redisService.setex(lockKey, ttl, lockValue);
@@ -744,7 +734,7 @@ export class CacheService {
   async releaseDistributedLock(key: string): Promise<boolean> {
     const lockKey = `lock:${key}`;
     const nodeId = this.getNodeId();
-    
+
     try {
       // Use Lua script to atomically check and delete lock
       const luaScript = `
@@ -754,7 +744,7 @@ export class CacheService {
           return 0
         end
       `;
-      
+
       const result = await this.redisService.eval(luaScript, [lockKey], [nodeId]);
       return result === 1;
     } catch (error) {
@@ -766,17 +756,13 @@ export class CacheService {
   /**
    * Distributed cache operation with lock
    */
-  async distributedOperation<T>(
-    key: string, 
-    operation: () => Promise<T>, 
-    lockTtl: number = 30
-  ): Promise<T> {
+  async distributedOperation<T>(key: string, operation: () => Promise<T>, lockTtl: number = 30): Promise<T> {
     const lockAcquired = await this.acquireDistributedLock(key, lockTtl);
-    
+
     if (!lockAcquired) {
       throw new Error(`Could not acquire distributed lock for key: ${key}`);
     }
-    
+
     try {
       return await operation();
     } finally {
@@ -792,14 +778,14 @@ export class CacheService {
     const versionKey = `version:${key}`;
     const currentVersion = await this.redisService.get(versionKey);
     const localVersion = await this.redisService.get(`local:version:${key}`);
-    
+
     // If versions differ, the cache might be stale
     if (currentVersion && localVersion && currentVersion !== localVersion) {
       // Invalidate local cache
       await this.del(key);
       return undefined;
     }
-    
+
     // Get the value as normal
     return await this.get<T>(key);
   }
@@ -810,15 +796,12 @@ export class CacheService {
   async setWithVersion<T>(key: string, value: T, options?: CacheOptions): Promise<void> {
     // Increment version for this key
     const version = await this.redisService.incr(`version:${key}`);
-    
+
     // Store the value
     await this.set(key, value, options);
-    
+
     // Store the local version
-    await this.redisService.setex(`local:version:${key}`, 
-      options?.ttl || this.getDefaultTtl(), 
-      version.toString()
-    );
+    await this.redisService.setex(`local:version:${key}`, options?.ttl || this.getDefaultTtl(), version.toString());
   }
 
   /**
@@ -831,28 +814,28 @@ export class CacheService {
       maxRetries?: number;
       retryDelay?: number;
       fallbackOnFailure?: boolean;
-    }
+    },
   ): Promise<T> {
     const maxRetries = options?.maxRetries ?? 3;
     const retryDelay = options?.retryDelay ?? 100;
     const fallbackOnFailure = options?.fallbackOnFailure ?? true;
-    
+
     let lastError: Error;
-    
+
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         return await operation();
       } catch (error) {
         this.logger.warn(`Cache operation attempt ${attempt}/${maxRetries} failed: ${error.message}`);
         lastError = error as Error;
-        
+
         if (attempt < maxRetries) {
           // Wait before retrying
           await new Promise(resolve => setTimeout(resolve, retryDelay * attempt));
         }
       }
     }
-    
+
     // If all retries failed and fallback is enabled
     if (fallbackOnFailure) {
       try {
@@ -863,7 +846,7 @@ export class CacheService {
         throw lastError; // Throw the original error
       }
     }
-    
+
     throw lastError;
   }
 
@@ -876,7 +859,7 @@ export class CacheService {
     options?: {
       ttl?: number;
       refreshInBackground?: boolean;
-    }
+    },
   ): Promise<T> {
     // First, try to get from cache
     const cachedValue = await this.get<T>(key);
@@ -884,16 +867,16 @@ export class CacheService {
       this.logger.log(`Cache HIT for key: ${key}`);
       return cachedValue;
     }
-    
+
     // If not in cache, try fallback factories in sequence
     for (let i = 0; i < fallbackFactories.length; i++) {
       try {
         this.logger.log(`Trying fallback ${i + 1}/${fallbackFactories.length}`);
         const value = await fallbackFactories[i]();
-        
+
         // Cache the successful result
         await this.set(key, value, { ttl: options?.ttl });
-        
+
         // Optionally refresh in background
         if (options?.refreshInBackground) {
           setImmediate(async () => {
@@ -905,30 +888,33 @@ export class CacheService {
             }
           });
         }
-        
+
         return value;
       } catch (error) {
         this.logger.warn(`Fallback ${i + 1} failed: ${error.message}`);
-        
+
         // If this was the last fallback, throw the error
         if (i === fallbackFactories.length - 1) {
           throw error;
         }
       }
     }
-    
+
     throw new Error(`All fallback methods failed for key: ${key}`);
   }
 
   /**
    * Circuit breaker pattern for cache operations
    */
-  private circuitBreakerState: Map<string, {
-    failureCount: number;
-    lastFailureTime: number;
-    isOpen: boolean;
-    nextAttemptTime: number;
-  }> = new Map();
+  private circuitBreakerState: Map<
+    string,
+    {
+      failureCount: number;
+      lastFailureTime: number;
+      isOpen: boolean;
+      nextAttemptTime: number;
+    }
+  > = new Map();
 
   async executeWithCircuitBreaker<T>(
     key: string,
@@ -937,15 +923,15 @@ export class CacheService {
       failureThreshold?: number;
       timeout?: number;
       resetTimeout?: number;
-    }
+    },
   ): Promise<T> {
     const failureThreshold = options?.failureThreshold ?? 5;
     const timeout = options?.timeout ?? 60000; // 1 minute
     const resetTimeout = options?.resetTimeout ?? 30000; // 30 seconds
-    
+
     const stateKey = `circuit-breaker:${key}`;
     let state = this.circuitBreakerState.get(stateKey);
-    
+
     if (!state) {
       state = {
         failureCount: 0,
@@ -955,7 +941,7 @@ export class CacheService {
       };
       this.circuitBreakerState.set(stateKey, state);
     }
-    
+
     // Check if circuit breaker is open
     if (state.isOpen) {
       if (Date.now() >= state.nextAttemptTime) {
@@ -976,7 +962,7 @@ export class CacheService {
         throw new Error(`Circuit breaker is OPEN for key: ${key}`);
       }
     }
-    
+
     // Execute operation
     try {
       const result = await operation();
@@ -987,14 +973,14 @@ export class CacheService {
       // Increment failure count
       state.failureCount++;
       state.lastFailureTime = Date.now();
-      
+
       // Open circuit if threshold exceeded
       if (state.failureCount >= failureThreshold) {
         state.isOpen = true;
         state.nextAttemptTime = Date.now() + resetTimeout;
         this.logger.warn(`Circuit breaker OPENED for key: ${key}`);
       }
-      
+
       throw error;
     }
   }
@@ -1009,7 +995,7 @@ export class CacheService {
       cacheTtl?: number;
       maxStaleAge?: number; // Maximum age of stale data to serve
       allowStale?: boolean; // Whether to serve stale data
-    }
+    },
   ): Promise<T> {
     try {
       // Try to get fresh data from cache
@@ -1021,22 +1007,22 @@ export class CacheService {
     } catch (cacheError) {
       this.logger.error(`Cache GET failed: ${cacheError.message}, proceeding to factory`);
     }
-    
+
     try {
       // Get fresh data from factory
       const freshValue = await factory();
-      
+
       // Try to cache the fresh value
       try {
         await this.set(key, freshValue, { ttl: options?.cacheTtl });
       } catch (cacheError) {
         this.logger.error(`Failed to cache fresh value: ${cacheError.message}, continuing without cache`);
       }
-      
+
       return freshValue;
     } catch (factoryError) {
       this.logger.error(`Factory failed: ${factoryError.message}`);
-      
+
       // If we allow stale data and have it available, return it
       if (options?.allowStale && options?.maxStaleAge) {
         try {
@@ -1051,11 +1037,8 @@ export class CacheService {
           this.logger.error(`Failed to retrieve stale data: ${staleError.message}`);
         }
       }
-      
+
       throw factoryError;
     }
   }
 }
-
-
-

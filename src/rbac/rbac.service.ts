@@ -14,11 +14,7 @@ export class RbacService {
   /**
    * Check if a user has permission to perform an action on a resource
    */
-  async hasPermission(
-    userId: string,
-    resource: Resource,
-    action: Action,
-  ): Promise<boolean> {
+  async hasPermission(userId: string, resource: Resource, action: Action): Promise<boolean> {
     try {
       // Get user with roles and permissions
       const user = await this.prisma.user.findUnique({
@@ -48,9 +44,7 @@ export class RbacService {
       // Check if user has direct permissions
       if (user.userRole && user.userRole.permissions) {
         const hasPerm = user.userRole.permissions.some(
-          (rolePerm) =>
-            rolePerm.permission.resource === resource &&
-            rolePerm.permission.action === action,
+          rolePerm => rolePerm.permission.resource === resource && rolePerm.permission.action === action,
         );
 
         if (hasPerm) {
@@ -61,9 +55,7 @@ export class RbacService {
       // Also check if user has 'MANAGE' permission for the resource (full access)
       if (user.userRole && user.userRole.permissions) {
         const hasManagePerm = user.userRole.permissions.some(
-          (rolePerm) =>
-            rolePerm.permission.resource === resource &&
-            rolePerm.permission.action === Action.MANAGE,
+          rolePerm => rolePerm.permission.resource === resource && rolePerm.permission.action === Action.MANAGE,
         );
 
         if (hasManagePerm) {
@@ -318,10 +310,7 @@ export class RbacService {
           const transaction = await this.prisma.transaction.findUnique({
             where: { id: resourceId },
           });
-          return (
-            transaction?.fromAddress === userId ||
-            transaction?.toAddress === userId
-          );
+          return transaction?.fromAddress === userId || transaction?.toAddress === userId;
 
         default:
           return false;
@@ -335,15 +324,10 @@ export class RbacService {
   /**
    * Enhanced permission check combining RBAC and ABAC
    */
-  async hasAccess(
-    userId: string,
-    resource: Resource,
-    action: Action,
-    resourceId?: string,
-  ): Promise<boolean> {
+  async hasAccess(userId: string, resource: Resource, action: Action, resourceId?: string): Promise<boolean> {
     // First, check basic RBAC permissions
     const hasBasicPermission = await this.hasPermission(userId, resource, action);
-    
+
     if (hasBasicPermission) {
       return true;
     }
@@ -358,12 +342,8 @@ export class RbacService {
 
       const mappedResource = resourceMap[resource];
       if (mappedResource) {
-        const hasOwnership = await this.validateResourceOwnership(
-          userId,
-          mappedResource as any,
-          resourceId,
-        );
-        
+        const hasOwnership = await this.validateResourceOwnership(userId, mappedResource as any, resourceId);
+
         if (hasOwnership) {
           return true;
         }

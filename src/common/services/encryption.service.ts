@@ -9,7 +9,7 @@ export class EncryptionService {
   private readonly keyLength = 32; // 256 bits
   private readonly ivLength = 16; // 128 bits
   private readonly saltLength = 16; // 128 bits
-  
+
   private readonly encryptionKey: Buffer;
 
   constructor(private configService: ConfigService) {
@@ -34,7 +34,7 @@ export class EncryptionService {
       // Truncate the key if it's too long
       key = key.substring(0, this.keyLength);
     }
-    
+
     return Buffer.from(key, 'utf8');
   }
 
@@ -45,10 +45,10 @@ export class EncryptionService {
     try {
       // Generate a random IV for each encryption
       const iv = crypto.randomBytes(this.ivLength);
-      
+
       // Create cipher
       const cipher = crypto.createCipheriv(this.algorithm, this.encryptionKey, iv);
-      
+
       // Encrypt the data
       let dataBuffer: Buffer;
       if (typeof data === 'string') {
@@ -56,15 +56,12 @@ export class EncryptionService {
       } else {
         dataBuffer = data;
       }
-      
-      const encrypted = Buffer.concat([
-        cipher.update(dataBuffer),
-        cipher.final(),
-      ]);
-      
+
+      const encrypted = Buffer.concat([cipher.update(dataBuffer), cipher.final()]);
+
       // Get the authentication tag
       const authTag = cipher.getAuthTag();
-      
+
       return {
         encrypted: encrypted.toString('hex'),
         iv: iv.toString('hex'),
@@ -85,19 +82,16 @@ export class EncryptionService {
       const encryptedBuffer = Buffer.from(encryptedData.encrypted, 'hex');
       const iv = Buffer.from(encryptedData.iv, 'hex');
       const authTag = Buffer.from(encryptedData.authTag, 'hex');
-      
+
       // Create decipher
       const decipher = crypto.createDecipheriv(this.algorithm, this.encryptionKey, iv);
-      
+
       // Set the authentication tag
       decipher.setAuthTag(authTag);
-      
+
       // Decrypt the data
-      const decrypted = Buffer.concat([
-        decipher.update(encryptedBuffer),
-        decipher.final(),
-      ]);
-      
+      const decrypted = Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
+
       return decrypted.toString('utf8');
     } catch (error) {
       this.logger.error(`Decryption failed: ${error.message}`);
@@ -110,10 +104,8 @@ export class EncryptionService {
    */
   hashWithSalt(data: string): { hash: string; salt: string } {
     const salt = crypto.randomBytes(this.saltLength).toString('hex');
-    const hash = crypto
-      .pbkdf2Sync(data, salt, 10000, 64, 'sha256')
-      .toString('hex');
-    
+    const hash = crypto.pbkdf2Sync(data, salt, 10000, 64, 'sha256').toString('hex');
+
     return { hash, salt };
   }
 
@@ -121,21 +113,19 @@ export class EncryptionService {
    * Verify hashed data
    */
   verifyHash(data: string, hash: string, salt: string): boolean {
-    const computedHash = crypto
-      .pbkdf2Sync(data, salt, 10000, 64, 'sha256')
-      .toString('hex');
-    
-    return crypto.timingSafeEqual(
-      Buffer.from(hash, 'hex'),
-      Buffer.from(computedHash, 'hex')
-    );
+    const computedHash = crypto.pbkdf2Sync(data, salt, 10000, 64, 'sha256').toString('hex');
+
+    return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(computedHash, 'hex'));
   }
 
   /**
    * Generate a cryptographically secure random string
    */
   generateRandomString(length: number): string {
-    return crypto.randomBytes(Math.ceil(length / 2)).toString('hex').substring(0, length);
+    return crypto
+      .randomBytes(Math.ceil(length / 2))
+      .toString('hex')
+      .substring(0, length);
   }
 
   /**
@@ -143,7 +133,7 @@ export class EncryptionService {
    */
   encryptObject<T extends Record<string, any>>(obj: T, fieldsToEncrypt: string[]): T {
     const encryptedObj = { ...obj };
-    
+
     for (const field of fieldsToEncrypt) {
       if (encryptedObj.hasOwnProperty(field) && encryptedObj[field] !== null && encryptedObj[field] !== undefined) {
         const value = encryptedObj[field];
@@ -152,12 +142,12 @@ export class EncryptionService {
           // Store as encrypted object
           encryptedObj[field as keyof T] = {
             __encrypted__: true,
-            ...encrypted
+            ...encrypted,
           } as T[keyof T];
         }
       }
     }
-    
+
     return encryptedObj;
   }
 
@@ -166,7 +156,7 @@ export class EncryptionService {
    */
   decryptObject<T extends Record<string, any>>(obj: T, fieldsToDecrypt: string[]): T {
     const decryptedObj = { ...obj };
-    
+
     for (const field of fieldsToDecrypt) {
       if (
         decryptedObj.hasOwnProperty(field) &&
@@ -178,15 +168,15 @@ export class EncryptionService {
         const encryptedData = {
           encrypted: (decryptedObj[field] as any).encrypted,
           iv: (decryptedObj[field] as any).iv,
-          authTag: (decryptedObj[field] as any).authTag
+          authTag: (decryptedObj[field] as any).authTag,
         };
-        
+
         // Decrypt the value
         const decryptedValue = this.decrypt(encryptedData);
         decryptedObj[field as keyof T] = decryptedValue as T[keyof T];
       }
     }
-    
+
     return decryptedObj;
   }
 
@@ -197,14 +187,11 @@ export class EncryptionService {
     try {
       const iv = crypto.randomBytes(this.ivLength);
       const cipher = crypto.createCipheriv(this.algorithm, this.encryptionKey, iv);
-      
-      const encrypted = Buffer.concat([
-        cipher.update(buffer),
-        cipher.final(),
-      ]);
-      
+
+      const encrypted = Buffer.concat([cipher.update(buffer), cipher.final()]);
+
       const authTag = cipher.getAuthTag();
-      
+
       return {
         encryptedBuffer: encrypted,
         iv,
@@ -223,11 +210,8 @@ export class EncryptionService {
     try {
       const decipher = crypto.createDecipheriv(this.algorithm, this.encryptionKey, encryptedData.iv);
       decipher.setAuthTag(encryptedData.authTag);
-      
-      return Buffer.concat([
-        decipher.update(encryptedData.encryptedBuffer),
-        decipher.final(),
-      ]);
+
+      return Buffer.concat([decipher.update(encryptedData.encryptedBuffer), decipher.final()]);
     } catch (error) {
       this.logger.error(`File decryption failed: ${error.message}`);
       throw new Error(`File decryption failed: ${error.message}`);
@@ -245,16 +229,16 @@ export class EncryptionService {
       } else {
         dataBuffer = data;
       }
-      
+
       const sign = crypto.createSign('SHA256');
       sign.write(dataBuffer);
       sign.end();
-      
+
       const privateKey = this.configService.get<string>('SIGNING_PRIVATE_KEY');
       if (!privateKey) {
         throw new Error('SIGNING_PRIVATE_KEY environment variable is required for signing');
       }
-      
+
       return sign.sign(privateKey, 'hex');
     } catch (error) {
       this.logger.error(`Signature creation failed: ${error.message}`);
@@ -273,16 +257,16 @@ export class EncryptionService {
       } else {
         dataBuffer = data;
       }
-      
+
       const verify = crypto.createVerify('SHA256');
       verify.write(dataBuffer);
       verify.end();
-      
+
       const publicKey = this.configService.get<string>('SIGNING_PUBLIC_KEY');
       if (!publicKey) {
         throw new Error('SIGNING_PUBLIC_KEY environment variable is required for signature verification');
       }
-      
+
       return verify.verify(publicKey, signature, 'hex');
     } catch (error) {
       this.logger.error(`Signature verification failed: ${error.message}`);

@@ -8,19 +8,7 @@ import { EncryptionService } from '../services/encryption.service';
 
 @Module({
   imports: [DatabaseModule],
-  providers: [
-    AuditService,
-    ComplianceReportingService,
-    DataRetentionService,
-    GdprService,
-    EncryptionService,
-  ],
-  exports: [
-    AuditService,
-    ComplianceReportingService,
-    DataRetentionService,
-    GdprService,
-    EncryptionService,
-  ],
+  providers: [AuditService, ComplianceReportingService, DataRetentionService, GdprService, EncryptionService],
+  exports: [AuditService, ComplianceReportingService, DataRetentionService, GdprService, EncryptionService],
 })
 export class AuditModule {}

@@ -95,7 +95,7 @@ import { AuthRateLimitMiddleware } from './auth/middleware/auth.middleware';
     FilesModule,
     ValuationModule,
     DocumentsModule,
-    
+
     // Compliance & Security
     AuditModule,
     RbacModule,

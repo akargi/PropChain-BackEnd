@@ -76,5 +76,3 @@ export class RedisService {
     return await this.redis.flushdb();
   }
 }
-
-

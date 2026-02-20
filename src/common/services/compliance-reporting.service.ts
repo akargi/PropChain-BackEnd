@@ -79,12 +79,9 @@ export class ComplianceReportingService {
   /**
    * Generate a comprehensive compliance report
    */
-  async generateComplianceReport(
-    periodStart: Date,
-    periodEnd: Date,
-  ): Promise<ComplianceReport> {
+  async generateComplianceReport(periodStart: Date, periodEnd: Date): Promise<ComplianceReport> {
     this.logger.log(
-      `Generating compliance report for period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`
+      `Generating compliance report for period: ${periodStart.toISOString()} to ${periodEnd.toISOString()}`,
     );
 
     // Get all report components
@@ -110,14 +107,13 @@ export class ComplianceReportingService {
 
     // Calculate overall compliance rate
     const totalAudits = auditTrailSummary.totalActions;
-    const gdprRequests = gdprComplianceSummary.dataExports + 
-                        gdprComplianceSummary.deletions + 
-                        gdprComplianceSummary.consentUpdates;
+    const gdprRequests =
+      gdprComplianceSummary.dataExports + gdprComplianceSummary.deletions + gdprComplianceSummary.consentUpdates;
 
     const complianceRate = this.calculateComplianceRate(
       auditTrailSummary,
       gdprComplianceSummary,
-      securityMetricsSummary
+      securityMetricsSummary,
     );
 
     const report: ComplianceReport = {
@@ -141,11 +137,7 @@ export class ComplianceReportingService {
         gdprCompliance: gdprComplianceSummary,
         securityMetrics: securityMetricsSummary,
       },
-      recommendations: this.generateRecommendations(
-        auditTrailSummary,
-        gdprComplianceSummary,
-        securityMetricsSummary
-      ),
+      recommendations: this.generateRecommendations(auditTrailSummary, gdprComplianceSummary, securityMetricsSummary),
     };
 
     // Log the report generation
@@ -166,10 +158,7 @@ export class ComplianceReportingService {
   /**
    * Get audit trail summary for the specified period
    */
-  private async getAuditTrailSummary(
-    periodStart: Date,
-    periodEnd: Date,
-  ): Promise<AuditTrailSummary> {
+  private async getAuditTrailSummary(periodStart: Date, periodEnd: Date): Promise<AuditTrailSummary> {
     const audits = await this.prisma.auditLog.findMany({
       where: {
         timestamp: {
@@ -212,10 +201,7 @@ export class ComplianceReportingService {
   /**
    * Get user activity summary for the specified period
    */
-  private async getUserActivitySummary(
-    periodStart: Date,
-    periodEnd: Date,
-  ): Promise<UserActivitySummary> {
+  private async getUserActivitySummary(periodStart: Date, periodEnd: Date): Promise<UserActivitySummary> {
     const [activeUsers, newUsers, roleChanges, loginAttempts] = await Promise.all([
       this.prisma.user.count({
         where: {
@@ -244,10 +230,7 @@ export class ComplianceReportingService {
       // Assuming we have a way to track login attempts (maybe in audit logs)
       this.prisma.auditLog.count({
         where: {
-          AND: [
-            { tableName: 'auth_attempts' },
-            { timestamp: { gte: periodStart, lte: periodEnd } },
-          ],
+          AND: [{ tableName: 'auth_attempts' }, { timestamp: { gte: periodStart, lte: periodEnd } }],
         },
       }),
     ]);
@@ -274,10 +257,7 @@ export class ComplianceReportingService {
       .filter(stat => stat.compliancePercentage < 95)
       .map(stat => stat.tableName);
 
-    const expiredRecords = retentionStats.reduce(
-      (sum, stat) => sum + stat.expiredRecords,
-      0
-    );
+    const expiredRecords = retentionStats.reduce((sum, stat) => sum + stat.expiredRecords, 0);
 
     return {
       compliantTables,
@@ -289,10 +269,7 @@ export class ComplianceReportingService {
   /**
    * Get GDPR compliance summary
    */
-  private async getGdprComplianceSummary(
-    periodStart: Date,
-    periodEnd: Date,
-  ): Promise<GdprComplianceSummary> {
+  private async getGdprComplianceSummary(periodStart: Date, periodEnd: Date): Promise<GdprComplianceSummary> {
     // In a real implementation, these would come from GDPR-specific logs
     // For now, we'll count GDPR-related audit logs
     const [dataExports, deletions, consentUpdates] = await Promise.all([
@@ -301,11 +278,11 @@ export class ComplianceReportingService {
           AND: [
             { operation: 'READ' },
             { tableName: 'users' },
-            { 
-              newData: { 
-                path: ['action'], 
-                string_contains: 'GDPR_DATA_EXPORT' 
-              } 
+            {
+              newData: {
+                path: ['action'],
+                string_contains: 'GDPR_DATA_EXPORT',
+              },
             },
             { timestamp: { gte: periodStart, lte: periodEnd } },
           ],
@@ -313,18 +290,12 @@ export class ComplianceReportingService {
       }),
       this.prisma.auditLog.count({
         where: {
-          AND: [
-            { operation: 'GDPR_DELETE' },
-            { timestamp: { gte: periodStart, lte: periodEnd } },
-          ],
+          AND: [{ operation: 'GDPR_DELETE' }, { timestamp: { gte: periodStart, lte: periodEnd } }],
         },
       }),
       this.prisma.auditLog.count({
         where: {
-          AND: [
-            { tableName: 'consents' },
-            { timestamp: { gte: periodStart, lte: periodEnd } },
-          ],
+          AND: [{ tableName: 'consents' }, { timestamp: { gte: periodStart, lte: periodEnd } }],
         },
       }),
     ]);
@@ -343,10 +314,7 @@ export class ComplianceReportingService {
   /**
    * Get security metrics summary
    */
-  private async getSecurityMetricsSummary(
-    periodStart: Date,
-    periodEnd: Date,
-  ): Promise<SecurityMetricsSummary> {
+  private async getSecurityMetricsSummary(periodStart: Date, periodEnd: Date): Promise<SecurityMetricsSummary> {
     // These would typically come from security logs
     // For now, we'll use audit logs to approximate
     const [failedLogins, suspiciousActivities, apiKeyUsage] = await Promise.all([
@@ -418,7 +386,7 @@ export class ComplianceReportingService {
     // 1. Proper audit logging (should have audit logs)
     // 2. GDPR compliance (should handle GDPR requests)
     // 3. Security incidents (lower is better)
-    
+
     let score = 100;
 
     // Deduct points for lack of audit logs
@@ -452,29 +420,21 @@ export class ComplianceReportingService {
     const recommendations: string[] = [];
 
     if (auditSummary.totalActions === 0) {
-      recommendations.push(
-        'Implement comprehensive audit logging for all data changes'
-      );
+      recommendations.push('Implement comprehensive audit logging for all data changes');
     }
 
     if (securitySummary.failedLogins > 50) {
-      recommendations.push(
-        'Review authentication security and implement additional measures'
-      );
+      recommendations.push('Review authentication security and implement additional measures');
     }
 
     if (gdprSummary.dataExports === 0 && gdprSummary.deletions === 0) {
-      recommendations.push(
-        'Verify GDPR compliance features are properly tracked and logged'
-      );
+      recommendations.push('Verify GDPR compliance features are properly tracked and logged');
     }
 
     if (auditSummary.topTables.length > 0) {
       const mostChangedTable = auditSummary.topTables[0];
       if (mostChangedTable.count > 1000) {
-        recommendations.push(
-          `Consider optimizing access patterns for ${mostChangedTable.tableName} table`
-        );
+        recommendations.push(`Consider optimizing access patterns for ${mostChangedTable.tableName} table`);
       }
     }
 
@@ -488,20 +448,17 @@ export class ComplianceReportingService {
   /**
    * Export compliance report in various formats
    */
-  async exportReport(
-    report: ComplianceReport,
-    format: 'json' | 'csv' | 'pdf' = 'json',
-  ): Promise<string | Buffer> {
+  async exportReport(report: ComplianceReport, format: 'json' | 'csv' | 'pdf' = 'json'): Promise<string | Buffer> {
     switch (format) {
       case 'json':
         return JSON.stringify(report, null, 2);
-      
+
       case 'csv':
         return this.convertToCsv(report);
-      
+
       case 'pdf':
         return this.convertToPdf(report);
-      
+
       default:
         throw new Error(`Unsupported export format: ${format}`);
     }
@@ -521,7 +478,7 @@ export class ComplianceReportingService {
     csv += `GDPR Requests,${report.summary.gdprRequests}\n`;
     csv += `Security Incidents,${report.summary.securityIncidents}\n`;
     csv += `Compliance Rate,${report.summary.complianceRate}%\n`;
-    
+
     return csv;
   }
 
@@ -531,7 +488,10 @@ export class ComplianceReportingService {
   private convertToPdf(report: ComplianceReport): Buffer {
     // This would require a PDF generation library like pdfkit or puppeteer
     // For now, return a placeholder
-    return Buffer.from(`Compliance Report\n\nReport ID: ${report.reportId}\nGenerated: ${report.reportDate}\n\n${JSON.stringify(report, null, 2)}`, 'utf-8');
+    return Buffer.from(
+      `Compliance Report\n\nReport ID: ${report.reportId}\nGenerated: ${report.reportDate}\n\n${JSON.stringify(report, null, 2)}`,
+      'utf-8',
+    );
   }
 
   /**
@@ -563,7 +523,8 @@ export class ComplianceReportingService {
         periodEnd.setDate(periodEnd.getDate() + 1);
       } else if (interval === 'weekly') {
         periodEnd.setDate(periodEnd.getDate() + 7);
-      } else { // monthly
+      } else {
+        // monthly
         periodEnd.setMonth(periodEnd.getMonth() + 1);
       }
 
@@ -588,7 +549,8 @@ export class ComplianceReportingService {
         currentDate.setDate(currentDate.getDate() + 1);
       } else if (interval === 'weekly') {
         currentDate.setDate(currentDate.getDate() + 7);
-      } else { // monthly
+      } else {
+        // monthly
         currentDate.setMonth(currentDate.getMonth() + 1);
       }
     }

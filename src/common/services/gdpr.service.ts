@@ -37,10 +37,7 @@ export class GdprService {
       }),
       this.prisma.transaction.findMany({
         where: {
-          OR: [
-            { fromAddress: user.walletAddress },
-            { toAddress: user.walletAddress },
-          ],
+          OR: [{ fromAddress: user.walletAddress }, { toAddress: user.walletAddress }],
         },
       }),
       this.prisma.document.findMany({
@@ -60,7 +57,7 @@ export class GdprService {
       tableName: 'users',
       operation: AuditOperation.READ,
       newData: { action: 'GDPR_DATA_EXPORT', userId },
-      userId: userId,
+      userId,
     });
 
     return {
@@ -90,8 +87,8 @@ export class GdprService {
     // Perform soft delete or hard delete based on compliance requirements
     // For financial/real estate applications, we may want to preserve records for legal reasons
     // So we'll anonymize the user instead of completely deleting
-    
-    await this.prisma.$transaction(async (tx) => {
+
+    await this.prisma.$transaction(async tx => {
       // Anonymize user data (keep for legal compliance but remove personal info)
       await tx.user.update({
         where: { id: userId },
@@ -139,7 +136,7 @@ export class GdprService {
       throw new Error('User not found');
     }
 
-    await this.prisma.$transaction(async (tx) => {
+    await this.prisma.$transaction(async tx => {
       // Store original data for audit before anonymization
       const originalData = {
         id: user.id,
@@ -185,7 +182,7 @@ export class GdprService {
         operation: AuditOperation.UPDATE,
         oldData: originalData,
         newData: { id: userId, status: 'ANONYMIZED' },
-        userId: userId,
+        userId,
       });
     });
   }
@@ -228,12 +225,12 @@ export class GdprService {
    */
   private sanitizeUserData(user: any): any {
     const sanitized = { ...user };
-    
+
     // Remove sensitive fields that shouldn't be exported
     delete sanitized.password;
     delete sanitized.twoFactorSecret;
     delete sanitized.refreshToken;
-    
+
     return sanitized;
   }
 
@@ -254,10 +251,6 @@ export class GdprService {
     }
 
     // Check if user has been anonymized
-    return (
-      user.email?.startsWith('anonymized-') ||
-      user.email?.startsWith('deleted-') ||
-      user.walletAddress === null
-    );
+    return user.email?.startsWith('anonymized-') || user.email?.startsWith('deleted-') || user.walletAddress === null;
   }
 }

@@ -401,7 +401,7 @@ export class ValuationService {
       where: { id: propertyId },
       data: updateData,
     });
-    
+
     // Invalidate related caches when property is updated
     await this.invalidateRelatedCaches(propertyId);
   }
@@ -498,15 +498,21 @@ export class ValuationService {
   }
 
   private calculateTrendDirection(marketData: any[]): 'up' | 'down' | 'stable' {
-    if (marketData.length < 2) return 'stable';
+    if (marketData.length < 2) {
+      return 'stable';
+    }
 
     const first = marketData[0]._avg.estimatedValue;
     const last = marketData[marketData.length - 1]._avg.estimatedValue;
-    
+
     const change = ((last - first) / first) * 100;
-    
-    if (change > 5) return 'up';
-    if (change < -5) return 'down';
+
+    if (change > 5) {
+      return 'up';
+    }
+    if (change < -5) {
+      return 'down';
+    }
     return 'stable';
   }
 
@@ -515,10 +521,10 @@ export class ValuationService {
    */
   async invalidatePropertyCache(propertyId: string): Promise<void> {
     const cacheKey = `valuation:${propertyId}`;
-    
+
     // Invalidate with cascade to handle dependent caches
     await this.cacheService.invalidateWithCascade(cacheKey);
-    
+
     this.logger.log(`Invalidated cache for property ${propertyId} with cascade`);
   }
 
@@ -530,7 +536,7 @@ export class ValuationService {
     await this.cacheService.invalidateByPattern(`property:${propertyId}*`);
     await this.cacheService.invalidateByPattern(`valuation:${propertyId}*`);
     await this.cacheService.invalidateByPattern(`document:property:${propertyId}*`);
-    
+
     this.logger.log(`Invalidated related caches for property ${propertyId}`);
   }
 
@@ -548,7 +554,7 @@ export class ValuationService {
     // Invalidate all valuations for properties in this location
     await this.cacheService.invalidateByPattern(`valuation:*${location}*`);
     await this.cacheService.invalidateByPattern(`valuation:history:*${location}*`);
-    
+
     this.logger.log(`Invalidated valuations for location: ${location}`);
   }
 
@@ -565,20 +571,22 @@ export class ValuationService {
    */
   async warmValuationCache(): Promise<void> {
     this.logger.log('Starting valuation cache warming process');
-    
+
     // Identify frequently accessed properties (e.g., recently viewed, popular locations)
     const frequentlyAccessedProperties = await this.getFrequentlyAccessedProperties();
-    
+
     const warmupTasks = frequentlyAccessedProperties.map(property => ({
       key: `valuation:${property.id}`,
       factory: () => this.getFreshValuation(property.id, property),
       options: { ttl: this.configService.get<number>('valuation.valuation.cacheTtl', 86400) },
       condition: () => true, // Always run warming for these properties
     }));
-    
+
     await this.cacheService.warmCache(warmupTasks);
-    
-    this.logger.log(`Completed warming cache for ${frequentlyAccessedProperties.length} frequently accessed properties`);
+
+    this.logger.log(
+      `Completed warming cache for ${frequentlyAccessedProperties.length} frequently accessed properties`,
+    );
   }
 
   /**
@@ -586,19 +594,19 @@ export class ValuationService {
    */
   async warmRecentValuations(): Promise<void> {
     this.logger.log('Starting recent valuations cache warming');
-    
+
     // Get recently valued properties
     const recentProperties = await this.getRecentValuedProperties();
-    
+
     const warmupTasks = recentProperties.map(property => ({
       key: `valuation:history:${property.propertyId}`,
       factory: () => this.getPropertyHistory(property.propertyId),
       options: { ttl: this.configService.get<number>('valuation.history.cacheTtl', 3600) },
       condition: () => true,
     }));
-    
+
     await this.cacheService.warmCache(warmupTasks);
-    
+
     this.logger.log(`Completed warming cache for ${recentProperties.length} recent valuations`);
   }
 
@@ -623,7 +631,7 @@ export class ValuationService {
           lotSize: true,
         },
       });
-      
+
       return properties;
     } catch (error) {
       this.logger.error(`Failed to get frequently accessed properties: ${error.message}`);
@@ -634,7 +642,7 @@ export class ValuationService {
   /**
    * Get recently valued properties
    */
-  private async getRecentValuedProperties(limit: number = 10): Promise<Array<{propertyId: string}>> {
+  private async getRecentValuedProperties(limit: number = 10): Promise<Array<{ propertyId: string }>> {
     try {
       const recentValuations = await (this.prisma as any).propertyValuation?.findMany({
         orderBy: { valuationDate: 'desc' },
@@ -644,7 +652,7 @@ export class ValuationService {
         },
         distinct: ['propertyId'], // Get unique property IDs
       });
-      
+
       return recentValuations;
     } catch (error) {
       this.logger.error(`Failed to get recent valued properties: ${error.message}`);
@@ -657,14 +665,14 @@ export class ValuationService {
    */
   private async getFreshValuation(propertyId: string, features?: PropertyFeatures): Promise<ValuationResult> {
     this.logger.log(`Fetching fresh valuation for property ${propertyId} (bypassing cache)`);
-    
+
     try {
       // Get property from database if features not provided
       if (!features) {
         const property = await this.prisma.property.findUnique({
           where: { id: propertyId },
         });
-        
+
         if (!property) {
           throw new NotFoundException(`Property with ID ${propertyId} not found`);
         }
@@ -705,10 +713,7 @@ export class ValuationService {
       const validValuations = valuations.filter(val => val !== null);
 
       if (validValuations.length === 0) {
-        throw new HttpException(
-          'All external valuation APIs failed',
-          HttpStatus.SERVICE_UNAVAILABLE,
-        );
+        throw new HttpException('All external valuation APIs failed', HttpStatus.SERVICE_UNAVAILABLE);
       }
 
       // Combine valuations using weighted average
