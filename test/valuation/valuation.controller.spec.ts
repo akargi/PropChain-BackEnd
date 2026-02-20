@@ -77,8 +77,8 @@ describe('ValuationController', () => {
       const location = 'Test Location';
       const expectedResult = {
         location,
-        trendData: [],
-        trendDirection: 'upward',
+        trendData: [] as { date: Date; avgValue: number }[],
+        trendDirection: 'up' as const,
       };
 
       jest.spyOn(service, 'getMarketTrendAnalysis').mockResolvedValue(expectedResult);

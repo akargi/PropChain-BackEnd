@@ -140,30 +140,7 @@
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.3.2"
   },
-  "jest": {
-    "moduleFileExtensions": [
-      "js",
-      "json",
-      "ts"
-    ],
-    "roots": [
-      "src",
-      "test"
-    ],
-    "testRegex": ".*\\.spec\\.ts$",
-    "transform": {
-      "^.+\\.(t|j)s$": "ts-jest"
-    },
-    "collectCoverageFrom": [
-      "**/*.(t|j)s"
-    ],
-    "coverageDirectory": "../coverage",
-    "testEnvironment": "node",
-    "moduleNameMapping": {
-      "^src/(.*)$": "<rootDir>/../src/$1",
-      "^test/(.*)$": "<rootDir>/../test/$1"
-    }
-  },
+  
   "engines": {
     "node": ">=18.0.0",
     "npm": ">=8.0.0"

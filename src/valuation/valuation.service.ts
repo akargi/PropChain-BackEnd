@@ -284,13 +284,29 @@ export class ValuationService {
    * Normalize property features to standard format
    */
   private normalizeFeatures(features: PropertyFeatures): PropertyFeatures {
+    // Normalize location: trim and lowercase
+    const location = features.location ? features.location.trim().toLowerCase() : '';
+    
+    // Convert string values to numbers where appropriate
+    const bedrooms = typeof features.bedrooms === 'string' ? 
+      parseInt(features.bedrooms, 10) : features.bedrooms;
+    const bathrooms = typeof features.bathrooms === 'string' ? 
+      parseFloat(features.bathrooms) : features.bathrooms;
+    const squareFootage = typeof features.squareFootage === 'string' ? 
+      parseInt(features.squareFootage, 10) : features.squareFootage;
+    const yearBuilt = typeof features.yearBuilt === 'string' ? 
+      parseInt(features.yearBuilt, 10) : features.yearBuilt;
+    const lotSize = typeof features.lotSize === 'string' ? 
+      parseFloat(features.lotSize) : features.lotSize;
+    
     return {
       ...features,
-      bedrooms: features.bedrooms || 0,
-      bathrooms: features.bathrooms || 0,
-      squareFootage: features.squareFootage || 0,
-      yearBuilt: features.yearBuilt || new Date().getFullYear(),
-      lotSize: features.lotSize || 0,
+      location,
+      bedrooms: bedrooms || 0,
+      bathrooms: bathrooms || 0,
+      squareFootage: squareFootage || 0,
+      yearBuilt: yearBuilt || 0,
+      lotSize: lotSize || 0,
     };
   }
 

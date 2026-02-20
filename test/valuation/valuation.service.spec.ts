@@ -1,7 +1,11 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { RedisService as NestRedisService } from '@liaoliaots/nestjs-redis';
 import { PrismaService } from '../../src/database/prisma/prisma.service';
 import { ValuationService } from '../../src/valuation/valuation.service';
+import { CacheService } from '../../src/common/services/cache.service';
+import { RedisService } from '../../src/common/services/redis.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
 describe('ValuationService', () => {
@@ -13,6 +17,41 @@ describe('ValuationService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ValuationService,
+        CacheService,
+        RedisService,
+        {
+          provide: NestRedisService,
+          useValue: {
+            getOrThrow: jest.fn().mockReturnValue({
+              get: jest.fn(),
+              set: jest.fn(),
+              del: jest.fn(),
+              exists: jest.fn(),
+              expire: jest.fn(),
+              keys: jest.fn(),
+              hgetall: jest.fn(),
+              hset: jest.fn(),
+              hdel: jest.fn(),
+              ttl: jest.fn(),
+              incr: jest.fn(),
+              publish: jest.fn(),
+              eval: jest.fn(),
+              flushdb: jest.fn(),
+            }),
+          },
+        },
+        {
+          provide: CACHE_MANAGER,
+          useValue: {
+            get: jest.fn(),
+            set: jest.fn(),
+            del: jest.fn(),
+            reset: jest.fn(),
+            store: {
+              reset: jest.fn(),
+            },
+          },
+        },
         {
           provide: ConfigService,
           useValue: {
