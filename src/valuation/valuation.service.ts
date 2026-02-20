@@ -4,6 +4,7 @@ import { PrismaService } from '../database/prisma/prisma.service';
 import axios from 'axios';
 import { Decimal } from '@prisma/client/runtime/library';
 import { CacheService } from '../common/services/cache.service';
+import { withResilience } from 'src/common/utils/resilence.util';
 
 export interface PropertyFeatures {
   id?: string;
@@ -742,5 +743,31 @@ export class ValuationService {
       this.logger.error(`Fresh valuation failed for property ${propertyId}: ${error.message}`);
       throw error;
     }
+  }
+
+  async getPropertyValuation(propertyId: string) {
+    return withResilience(() => this.callExternalValuationApi(propertyId), {
+      name: 'ValuationAPI',
+      retries: 3,
+      fallback: async err => {
+        this.logger.warn(`Valuation API failed for ${propertyId}, using fallback. Error: ${err.message}`);
+        const lastPrice = await this.prisma.propertyValuation.findFirst({
+          where: { propertyId },
+          orderBy: { createdAt: 'desc' },
+        });
+        return lastPrice || { value: 0, status: 'ESTIMATED' };
+      },
+    });
+  }
+
+  private async callExternalValuationApi(propertyId: string) {
+    const apiKey = this.configService.get<string>('VALUATION_API_KEY');
+    const apiUrl = this.configService.get<string>('VALUATION_API_URL');
+
+    const response = await axios.get(`${apiUrl}/valuation/${propertyId}`, {
+      headers: { 'X-API-KEY': apiKey },
+    });
+
+    return response.data;
   }
 }
