@@ -11,7 +11,7 @@ const SQL_INJECTION_PATTERNS = [
   /(;|\-\-|\#|\/\*|\*\/)/g,
   /(\b(OR|AND)\b\s*\d+\s*[=<>]\s*\d+)/gi,
   /(=\s*'?\d+'\s*(OR|AND))/gi,
-  /('|--|#|\/\*|\*\/)/g,
+  /(--|#|\/\*|\*\/)/g,
   /\b(OR|AND)\b\s+1\s*=\s*1/gi,
   /\b(OR|AND)\b\s+'1'\s*=\s*'1'/gi,
 ];
