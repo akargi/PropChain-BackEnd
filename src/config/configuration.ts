@@ -1,4 +1,4 @@
-import { JoiSchemaConfig } from './interfaces/joi-schema-config.interface';
+import { ConfigLoader } from './config.loader';
 
 export default (): JoiSchemaConfig => ({
   // Application
@@ -101,3 +101,7 @@ export default (): JoiSchemaConfig => ({
   MOCK_BLOCKCHAIN: process.env.MOCK_BLOCKCHAIN === 'true',
   ENABLE_SEED_DATA: process.env.ENABLE_SEED_DATA === 'true',
 });
+// Export the validated configuration using our new loader
+export default () => {
+  return ConfigLoader.load();
+};
