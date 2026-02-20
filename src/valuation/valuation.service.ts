@@ -4,6 +4,7 @@ import { PrismaService } from '../database/prisma/prisma.service';
 import axios from 'axios';
 import { Decimal } from '@prisma/client/runtime/library';
 import { CacheService } from '../common/services/cache.service';
+import { withResilience } from 'src/common/utils/resilence.util';
 
 export interface PropertyFeatures {
   id?: string;
@@ -286,19 +287,15 @@ export class ValuationService {
   private normalizeFeatures(features: PropertyFeatures): PropertyFeatures {
     // Normalize location: trim and lowercase
     const location = features.location ? features.location.trim().toLowerCase() : '';
-    
+
     // Convert string values to numbers where appropriate
-    const bedrooms = typeof features.bedrooms === 'string' ? 
-      parseInt(features.bedrooms, 10) : features.bedrooms;
-    const bathrooms = typeof features.bathrooms === 'string' ? 
-      parseFloat(features.bathrooms) : features.bathrooms;
-    const squareFootage = typeof features.squareFootage === 'string' ? 
-      parseInt(features.squareFootage, 10) : features.squareFootage;
-    const yearBuilt = typeof features.yearBuilt === 'string' ? 
-      parseInt(features.yearBuilt, 10) : features.yearBuilt;
-    const lotSize = typeof features.lotSize === 'string' ? 
-      parseFloat(features.lotSize) : features.lotSize;
-    
+    const bedrooms = typeof features.bedrooms === 'string' ? parseInt(features.bedrooms, 10) : features.bedrooms;
+    const bathrooms = typeof features.bathrooms === 'string' ? parseFloat(features.bathrooms) : features.bathrooms;
+    const squareFootage =
+      typeof features.squareFootage === 'string' ? parseInt(features.squareFootage, 10) : features.squareFootage;
+    const yearBuilt = typeof features.yearBuilt === 'string' ? parseInt(features.yearBuilt, 10) : features.yearBuilt;
+    const lotSize = typeof features.lotSize === 'string' ? parseFloat(features.lotSize) : features.lotSize;
+
     return {
       ...features,
       location,
@@ -746,5 +743,21 @@ export class ValuationService {
       this.logger.error(`Fresh valuation failed for property ${propertyId}: ${error.message}`);
       throw error;
     }
+  }
+
+   async getPropertyValuation(propertyId: string) {
+    return withResilience(() => this.callExternalValuationApi(propertyId), {
+      name: 'ValuationAPI',
+      retries: 3,
+      fallback: async err => {
+        this.logger.warn(`Valuation API failed for ${propertyId}, using fallback.`);
+        // Graceful degradation: Fetch last known price from DB
+        const lastPrice = await this.prisma.propertyValuation.findFirst({
+          where: { propertyId },
+          orderBy: { createdAt: 'desc' },
+        });
+        return lastPrice || { value: 0, status: 'ESTIMATED' };
+      },
+    });
   }
 }
