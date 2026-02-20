@@ -3,13 +3,18 @@ import { PrismaService } from '../database/prisma/prisma.service';
 import { AuditService, AuditOperation } from '../common/services/audit.service';
 import { Action } from './enums/action.enum';
 import { Resource } from './enums/resource.enum';
+import { StructuredLoggerService } from '../common/logging/logger.service';
 
 @Injectable()
 export class RbacService {
+  private readonly logger = new StructuredLoggerService(null);
+
   constructor(
     private prisma: PrismaService,
     private auditService: AuditService,
-  ) {}
+  ) {
+    this.logger.setContext('RbacService');
+  }
 
   /**
    * Check if a user has permission to perform an action on a resource
@@ -65,7 +70,7 @@ export class RbacService {
 
       return false;
     } catch (error) {
-      console.error('Error checking permission:', error);
+      this.logger.error('Error checking permission:', error.stack, { userId: userId, resource: resource, action: action });
       return false;
     }
   }
@@ -316,7 +321,7 @@ export class RbacService {
           return false;
       }
     } catch (error) {
-      console.error('Error validating resource ownership:', error);
+      this.logger.error('Error validating resource ownership:', error.stack, { userId: userId, resourceType: resourceType, resourceId: resourceId });
       return false;
     }
   }

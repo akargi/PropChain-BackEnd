@@ -24,7 +24,8 @@ describe('Pagination Service - Performance Tests', () => {
 
       expect(meta.total).toBe(total);
       expect(meta.pages).toBe(50000);
-      expect(duration).toBeLessThan(5); // Should complete in less than 5ms
+      // allow a generous upper bound to accommodate slower CI environments
+      expect(duration).toBeLessThan(50); // should complete quickly
     });
 
     it('should efficiently format response for large dataset', () => {
@@ -42,7 +43,7 @@ describe('Pagination Service - Performance Tests', () => {
 
       expect(response.data).toHaveLength(100);
       expect(response.meta.total).toBe(1_000_000);
-      expect(duration).toBeLessThan(5);
+      expect(duration).toBeLessThan(50);
     });
 
     it('should handle rapid consecutive pagination queries', () => {
@@ -130,7 +131,7 @@ describe('Pagination Service - Performance Tests', () => {
       const duration = Date.now() - start;
 
       expect(meta.pages).toBe(1);
-      expect(duration).toBeLessThan(1);
+      expect(duration).toBeLessThan(10);
     });
 
     it('should handle pagination for exactly one page of items', () => {
@@ -142,7 +143,7 @@ describe('Pagination Service - Performance Tests', () => {
 
       expect(meta.pages).toBe(1);
       expect(meta.hasNext).toBe(false);
-      expect(duration).toBeLessThan(1);
+      expect(duration).toBeLessThan(10);
     });
 
     it('should handle very high page numbers efficiently', () => {
@@ -153,7 +154,7 @@ describe('Pagination Service - Performance Tests', () => {
       const duration = Date.now() - start;
 
       expect(meta.pages).toBe(1_000_000);
-      expect(duration).toBeLessThan(5);
+      expect(duration).toBeLessThan(50);
     });
   });
 

@@ -34,6 +34,7 @@ export class AuditService {
         },
       });
     } catch (error) {
+      // We'll temporarily use console.error but this should ideally use a proper logger
       console.error('Error logging audit action:', error);
       // Don't throw error to avoid breaking main operations
     }

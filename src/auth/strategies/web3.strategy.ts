@@ -47,6 +47,8 @@ export class Web3Strategy extends PassportStrategy(Strategy, 'web3') {
       const recoveredAddress = ethers.verifyMessage(message, signature);
       return recoveredAddress.toLowerCase() === walletAddress.toLowerCase();
     } catch (error) {
+      // For now, keeping as console.error but should be replaced with proper logger
+      // when the service is properly injected
       console.error('Error verifying signature:', error);
       return false;
     }
