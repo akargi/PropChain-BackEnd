@@ -98,9 +98,8 @@ export class ConfigLoader {
         try {
           processedEnv[key] = ConfigEncryptionUtil.decrypt(value, encryptionKey);
         } catch (error) {
-          const errMsg = error instanceof Error ? error.message : String(error);
-          console.error(`Failed to decrypt ${key}:`, errMsg);
-          throw new Error(`Failed to decrypt ${key}: ${errMsg}`);
+          console.error(`Failed to decrypt ${key}:`, error.message);
+          throw new Error(`Failed to decrypt ${key}: ${error.message}`);
         }
       }
     }

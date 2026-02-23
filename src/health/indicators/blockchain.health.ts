@@ -27,8 +27,7 @@ export class BlockchainHealthIndicator extends HealthIndicator {
         },
       });
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      throw new HealthCheckError('Blockchain connection failed', this.getStatus(key, false, { error: errMsg }));
+      throw new HealthCheckError('Blockchain connection failed', this.getStatus(key, false, { error: error.message }));
     }
   }
 }

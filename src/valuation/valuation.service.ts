@@ -212,8 +212,7 @@ export class ValuationService {
         rawData: response.data,
       };
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Redfin API error: ${errMsg}`);
+      this.logger.error(`Redfin API error: ${error.message}`);
       return null;
     }
   }
@@ -261,8 +260,7 @@ export class ValuationService {
         rawData: response.data,
       };
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`CoreLogic API error: ${errMsg}`);
+      this.logger.error(`CoreLogic API error: ${error.message}`);
       return null;
     }
   }
@@ -351,7 +349,7 @@ export class ValuationService {
     if (trendEntries.length === 0) {
       return 'stable';
     }
-    
+
     return trendEntries.reduce((a, b) => (a[1] > b[1] ? a : b))[0] as 'up' | 'down' | 'stable';
   }
 
@@ -638,8 +636,7 @@ export class ValuationService {
 
       return properties;
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to get frequently accessed properties: ${errMsg}`);
+      this.logger.error(`Failed to get frequently accessed properties: ${error.message}`);
       return [];
     }
   }
@@ -660,8 +657,7 @@ export class ValuationService {
 
       return recentValuations;
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Failed to get recent valued properties: ${errMsg}`);
+      this.logger.error(`Failed to get recent valued properties: ${error.message}`);
       return [];
     }
   }
@@ -733,8 +729,7 @@ export class ValuationService {
 
       return savedValuation;
     } catch (error) {
-      const errMsg = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Fresh valuation failed for property ${propertyId}: ${errMsg}`);
+      this.logger.error(`Fresh valuation failed for property ${propertyId}: ${error.message}`);
       throw error;
     }
   }

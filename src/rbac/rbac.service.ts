@@ -70,8 +70,7 @@ export class RbacService {
 
       return false;
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error checking permission:', err.stack, {
+      this.logger.error('Error checking permission:', error.stack, {
         userId,
         resource,
         action,
@@ -326,8 +325,7 @@ export class RbacService {
           return false;
       }
     } catch (error) {
-      const err = error instanceof Error ? error : new Error(String(error));
-      this.logger.error('Error validating resource ownership:', err.stack, {
+      this.logger.error('Error validating resource ownership:', error.stack, {
         userId,
         resourceType,
         resourceId,
