@@ -115,7 +115,7 @@ SMTP_USER=noreply@propchain.local
 SMTP_PASSWORD=xxxxxxxxxxxxxxxx
 
 # Slack Alerts
-SLACK_WEBHOOK_URL=https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/YOUR_TEAM_ID/YOUR_APP_ID/YOUR_TOKEN
 SLACK_CHANNEL=#backup-alerts
 
 # PagerDuty Alerts
