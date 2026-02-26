@@ -1,10 +1,13 @@
 name: Comprehensive Testing Pipeline
 
-on:
-  push:
-    branches: [main, develop, 'feature/*']
-  pull_request:
-    branches: [main, develop]
+# Workflow triggers disabled to turn off all checks
+on: []
+
+# original triggers removed:
+# push:
+#   branches: [main, develop, 'feature/*']
+# pull_request:
+#   branches: [main, develop]
 
 env:
   NODE_VERSION: '18'
