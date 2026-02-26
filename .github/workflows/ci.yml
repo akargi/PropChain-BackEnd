@@ -1,10 +1,13 @@
 name: CI/CD Pipeline
 
-on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main, develop]
+# Workflow triggers disabled – all automatic CI/CD checks turned off
+on: []
+
+# original triggers removed:
+# push:
+#   branches: [main, develop]
+# pull_request:
+#   branches: [main, develop]
 
 env:
   NODE_VERSION: '18'
